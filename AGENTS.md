@@ -1,5 +1,6 @@
 # Project Overview
-This project is a boilerplate for a modern web application built with Turborepo. It includes a frontend and backend application, a database, and a shared services layer.
+
+Zapx - allows developers to monetize APIs on a per-request basis using the x402 payment protocol with custodial aggregation.
 
 # Coding Guidelines
 - Write elegant, clean, and maintainable code.

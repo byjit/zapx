@@ -544,12 +544,14 @@ Split the system into **control plane** and **data plane**.
 
 ```
 apps/
+  ...
   web          — Next.js dashboard + API discovery
   control-api  — Express: auth, onboarding, pricing, balances, withdrawals
   gateway      — Express: x402 request handling, payment verification, proxy
   worker       — Queue consumers: analytics, reconciliation, payouts
 
 packages/
+  ...
   db           — Prisma schema, migrations
   types        — Shared TypeScript types
   auth         — Auth utilities
