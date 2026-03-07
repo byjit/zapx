@@ -1,11 +1,11 @@
+import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
   schema: "./src/schema",
   out: "./src/migrations",
-  dialect: "turso",
+  dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL || "http://127.0.0.1:8080",
-    authToken: process.env.DATABASE_AUTH_TOKEN || "local",
+    url: process.env.DATABASE_URL!,
   },
 });

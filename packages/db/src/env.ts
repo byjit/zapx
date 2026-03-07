@@ -2,7 +2,6 @@ import { z } from "zod";
 
 export const dbEnvSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  DATABASE_AUTH_TOKEN: z.string().optional(),
 });
 
 const parsed = dbEnvSchema.safeParse(process.env);

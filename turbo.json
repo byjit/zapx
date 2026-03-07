@@ -33,14 +33,7 @@
       "cache": false,
       "persistent": true
     },
-    "db:local": {
-      "cache": false,
-      "persistent": true
-    },
     "db:sync": {
-      "cache": false
-    },
-    "db:sync:local": {
       "cache": false
     }
   }

@@ -12,7 +12,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **tRPC** - End-to-end type-safe APIs
 - **Node.js** - Runtime environment
 - **Drizzle** - TypeScript-first ORM
-- **SQLite/Turso** - Database engine
+- **Neon Postgres** - Serverless PostgreSQL database
 - **Authentication** - Better-Auth
 - **Turborepo** - Optimized monorepo build system
 
@@ -25,15 +25,14 @@ pnpm install
 ```
 ## Database Setup
 
-This project uses SQLite with Drizzle ORM.
+This project uses Neon Postgres with Drizzle ORM.
 
-1. Start the local SQLite database:
-```bash
-cd apps/server && pnpm db:local
+1. Create a Neon database at [console.neon.tech](https://console.neon.tech) and copy the connection string.
+
+2. Add `DATABASE_URL` to your `.env` file in the `apps/server` directory:
 ```
-
-
-2. Update your `.env` file in the `apps/server` directory with the appropriate connection details if needed.
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+```
 
 3. Apply the schema to your database:
 ```bash

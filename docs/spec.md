@@ -102,21 +102,38 @@ GET gateway.platform.com/weatherapi/weather?city=London
 
 ### Step 2 — Gateway returns payment requirement
 
+Gateway returns HTTP 402 with `PAYMENT-REQUIRED` header (base64-encoded JSON):
+
 ```
 HTTP 402 Payment Required
+PAYMENT-REQUIRED: <base64-encoded JSON>
+```
+
+Payment requirement format (x402 V2):
+
+```json
 {
- price: 0.001 USDC
- network: Solana
- recipient: platform_wallet
- nonce: random_nonce
+  "x402Version": 2,
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "maxAmountRequired": "1000",
+      "payTo": "0x...",
+      "resource": "/weather",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+    }
+  ]
 }
 ```
+
+Uses CAIP-2 network identifiers (e.g. `eip155:84532` for Base Sepolia). Zapx uses the `exact` scheme for MVP with USDC.
 
 ---
 
 ### Step 3 — Client sends payment
 
-Client signs blockchain transaction.
+Client signs USDC payment off-chain (EVM: EIP-3009 `TransferWithAuthorization` — gasless for client). Facilitator submits on-chain.
 
 ---
 
@@ -124,20 +141,28 @@ Client signs blockchain transaction.
 
 ```
 GET /weather
-X-PAYMENT: signed_payment_payload
+PAYMENT-SIGNATURE: <base64-encoded signed payload>
 ```
+
+Uses x402 V2 headers. Client may include a payment identifier for idempotency (see `payment-identifier` extension).
 
 ---
 
-### Step 5 — Platform verifies payment
+### Step 5 — Platform verifies and settles payment
+
+Two-step flow via facilitator:
+
+1. **Verify** — POST payload + requirements to facilitator `/verify` → check signature and requirements
+2. **Settle** — POST same to facilitator `/settle` → submit USDC transfer to blockchain and wait for confirmation
 
 Verification checks:
 
 * transaction hash
-* token type
+* token type (USDC)
 * correct amount
-* correct recipient wallet
+* correct recipient wallet (`payTo`)
 * nonce unused
+* signature validity
 
 ---
 
@@ -153,6 +178,7 @@ GET providerapi.com/weather
 
 ```
 HTTP 200 OK
+PAYMENT-RESPONSE: <base64-encoded JSON>
 {
  weather: "Rain"
 }
@@ -162,11 +188,13 @@ HTTP 200 OK
 
 ### Step 8 — Developer credited
 
-Ledger update:
+On successful settlement, gateway uses `onAfterSettle` lifecycle hook to update ledger:
 
 ```
 provider_balance += (price - platform_fee)
 ```
+
+The facilitator does not hold funds; it submits signed transactions. `payTo` in payment requirements determines where USDC goes (platform wallet).
 
 ---
 
@@ -190,16 +218,44 @@ Example configuration:
 
 Platform generates monetized gateway endpoints automatically.
 
+x402-compatible route config (USDC, Base Sepolia):
+
+```typescript
+{
+  "GET /weather": {
+    accepts: [
+      {
+        scheme: "exact",
+        price: "$0.001",
+        network: "eip155:84532",
+        payTo: platformWalletAddress,
+      },
+    ],
+    description: "Weather data",
+    mimeType: "application/json",
+  },
+}
+```
+
 ---
 
 ## 5.2 Payment Facilitation
 
-Platform verifies payments and processes settlements.
+Platform verifies payments and processes settlements via an **x402 facilitator**.
+
+The facilitator:
+
+* verifies payment payloads (POST `/verify`)
+* settles payments on-chain (POST `/settle`)
+* does not hold funds; submits signed transactions
+* `payTo` in payment requirements determines where USDC goes (platform wallet)
+
+Gateway uses facilitator for verify → settle. No direct blockchain integration needed.
 
 Responsibilities:
 
+* call facilitator `/verify` and `/settle`
 * validate payment signatures
-* confirm blockchain transaction
 * prevent replay attacks
 * track payment ledger
 * distribute payouts
@@ -236,6 +292,17 @@ Responsibilities:
 # 6. Platform Components
 
 The system consists of several core services.
+
+---
+
+## 6.0 Facilitator
+
+External x402 facilitator handles verify and settle. Gateway calls it; platform does not run blockchain nodes.
+
+| Environment | Facilitator URL |
+|-------------|-----------------|
+| Testnet | `https://x402.org/facilitator` |
+| Mainnet | `https://api.cdp.coinbase.com/platform/v2/x402` (CDP API keys) |
 
 ---
 
@@ -324,15 +391,20 @@ gateway.platform.com/weatherapi/weather
 
 # 6.3 Payment Verification Service
 
-Handles blockchain verification.
+Integrates with the x402 facilitator for verify and settle.
+
+Flow:
+
+1. **POST `/verify`** — Send payment payload + requirements to facilitator; validates signature and requirements
+2. **POST `/settle`** — Send same payload to facilitator; submits USDC transfer on-chain and waits for confirmation
 
 Checks include:
 
 ```
 transaction hash
-token
+token (USDC)
 amount
-recipient wallet
+recipient wallet (payTo)
 nonce
 signature validity
 ```
@@ -342,6 +414,8 @@ Ensures the payment:
 * exists
 * is correct
 * has not been reused
+
+Uses `payment-identifier` extension for idempotency: client sends unique payment ID; server caches responses; retries with same ID return cached response without re-processing payment.
 
 ---
 
@@ -533,6 +607,8 @@ Split the system into **control plane** and **data plane**.
 | Frontend | React with Tanstack Router |
 | Control API | Express |
 | Gateway (MVP) | Express with `@x402/express` |
+| x402 packages | `@x402/express`, `@x402/core`, `@x402/evm` (and `@x402/svm` if using Solana) |
+| Facilitator | `https://x402.org/facilitator` (testnet) / CDP API (mainnet) |
 | Database | Postgres |
 | Cache / idempotency / rate limits | Redis |
 | Queue (MVP) | BullMQ |
@@ -568,6 +644,15 @@ packages/
 
 Start with **Base + USDC** for best TypeScript/x402 toolchain fit. Add Solana later if needed.
 
+## Facilitator Configuration
+
+Gateway uses facilitator for verify/settle. Configure per environment:
+
+| Environment | Facilitator URL |
+|-------------|-----------------|
+| Testnet | `https://x402.org/facilitator` |
+| Mainnet | `https://api.cdp.coinbase.com/platform/v2/x402` (CDP API keys) |
+
 ## Request Flow
 
 1. User signs up in web
@@ -576,11 +661,18 @@ Start with **Base + USDC** for best TypeScript/x402 toolchain fit. Add Solana la
 4. Client calls `gateway/:project_slug/:route` (or `/:api_slug/:route`)
 5. If unpaid → gateway returns 402 challenge
 6. Client retries with x402 payment headers
-7. Gateway validates request id, idempotency, price config
-8. Gateway calls payment verification
+7. Gateway validates request id, idempotency, price config (use `payment-identifier` extension)
+8. Gateway POSTs to facilitator `/verify`, then `/settle`
 9. On success → proxy to upstream API
 10. Gateway writes immutable ledger row, credits user balance minus fee (user = provider)
 11. Async workers handle analytics, reconciliation, withdrawals
+
+## Lifecycle Hooks
+
+x402 supports hooks such as:
+
+* `onAfterSettle` — Record ledger entries after USDC settlement (credit provider balance)
+* `onProtectedRequest` — Bypass payment for API keys, etc., if needed
 
 ## x402 vs Custody
 
@@ -629,6 +721,8 @@ timestamp
 ```
 
 Reject duplicates.
+
+Use the x402 `payment-identifier` extension for idempotency: client sends unique payment ID; retries with same ID return cached response without re-processing payment.
 
 ---
 
@@ -679,6 +773,15 @@ API endpoint
 
 ---
 
+## Solana Duplicate Settlement (if Solana supported)
+
+On Solana, the same signed USDC transaction can be submitted multiple times before confirmation. Mitigation:
+
+* Use facilitator with built-in `SettlementCache`, or
+* Implement equivalent duplicate detection if settling directly
+
+---
+
 # 10. Latency Targets
 
 Target system performance:
@@ -697,19 +800,29 @@ Low latency is critical for adoption.
 
 Start simple.
 
+**Platform token:** USDC stablecoin for all payments.
+
 Supported:
 
 ```
-1 blockchain
-1 token
+1 blockchain (Base for MVP)
+1 token (USDC)
 ```
 
-Example setup:
+Use CAIP-2 network identifiers:
 
-```
-Network: Solana or Base
-Token: USDC
-```
+| Network | CAIP-2 ID |
+|---------|-----------|
+| Base Sepolia (testnet) | `eip155:84532` |
+| Base Mainnet | `eip155:8453` |
+| Solana Devnet | `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` |
+| Solana Mainnet | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` |
+
+**EVM / USDC:** Uses EIP-3009 `TransferWithAuthorization` — client signs off-chain; facilitator submits on-chain. Gasless for the client. USDC implements this natively.
+
+USDC contract addresses (EVM):
+* Base Sepolia: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+* Base Mainnet: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
 
 Benefits:
 
@@ -748,6 +861,8 @@ Example query:
 ```
 translation API under $0.01
 ```
+
+**Optional:** Bazaar is x402's discovery layer. Zapx could register APIs with Bazaar via the `bazaar` extension and use `/discovery/resources` for discovery. Add to roadmap after core flow is stable.
 
 ---
 

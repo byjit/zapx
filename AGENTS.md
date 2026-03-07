@@ -35,7 +35,7 @@ Zapx - allows developers to monetize APIs on a per-request basis using the x402 
 - **tRPC** - End-to-end type-safe APIs
 - **Node.js** - Runtime environment
 - **Drizzle** - TypeScript-first ORM
-- **SQLite/Turso DB** - Database engine
+- **Neon Postgres** - Serverless PostgreSQL database
 - **Authentication** - Better-Auth
 - **Turborepo** - Optimized monorepo build system
 - **PNPM (Package Manager)** - pnpm for efficient package management
@@ -49,9 +49,11 @@ Zapx - allows developers to monetize APIs on a per-request basis using the x402 
 ```
 turborepo-boilerplate/
 ├── apps/
+|   ...
 │   ├── web/         # Frontend application (React + TanStack Router)
 │   └── server/      # Backend API (Express, TRPC)
 ├── packages/
+|   ...
 │   ├── api/         # API layer / business logic
 │   ├── auth/        # Authentication configuration & logic
 │   ├── db/          # Database schema & queries
@@ -72,11 +74,10 @@ turborepo-boilerplate/
 - `pnpm check-types`: Check TypeScript types across all apps
 - `pnpm dev:web`: Start only the web application
 - `pnpm dev:server`: Start only the server
-- `pnpm db:sync`: Sync schema changes to the database
-- `pnpm db:sync:local`: Sync schema changes to the local database
+- `pnpm db:sync`: Generate and apply schema migrations to the database
 - `pnpm email-preview`: Preview emails
 
-## IMPORTANT NOTES
+## NOTES
 
 - When db schema is changed, run `pnpm db:sync` to sync the changes to the database.
 - The `/docs` folder is the place for all documentation related to the development of the project.
@@ -86,6 +87,8 @@ turborepo-boilerplate/
 - Use the `apps/web/src/components/logo.tsx` component whenever a logo is needed.
 - The shadcn web UI components are inside `apps/web/src/components/ui/` folder.
 - The AI components are inside `apps/web/src/components/ai-elements/` folder.
+- Normally you can use the `x402-payments` skill to learn more about x402 implementation. But if you need more detailed information, you can also fetch the respective documentation from `docs/x402-full-documentation.txt` file.
+
 
 ## Tests
 

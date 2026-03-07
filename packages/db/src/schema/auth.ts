@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import {
   createInsertSchema,
   createSelectSchema,
@@ -7,32 +7,32 @@ import {
 } from "drizzle-zod";
 import type z from "zod";
 
-export const user = sqliteTable("user", {
+export const user = pgTable("user", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  emailVerified: integer("email_verified", { mode: "boolean" }).notNull(),
+  emailVerified: boolean("email_verified").notNull(),
   image: text("image"),
-  onboard: integer("onboard", { mode: "boolean" }).default(true),
+  onboard: boolean("onboard").default(true),
   metadata: text("metadata"),
   role: text("role"),
-  banned: integer("banned", { mode: "boolean" }).default(false),
+  banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
-  banExpires: integer("ban_expires", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  banExpires: timestamp("ban_expires"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
 });
 
-export const session = sqliteTable("session", {
+export const session = pgTable("session", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
-  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
   token: text("token").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   userId: text("user_id")
@@ -42,18 +42,18 @@ export const session = sqliteTable("session", {
   activeOrganizationId: text("active_organization_id"),
 });
 
-export const organization = sqliteTable("organization", {
+export const organization = pgTable("organization", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
   name: text("name").notNull(),
   slug: text("slug").unique(),
   logo: text("logo"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
   metadata: text("metadata"),
 });
 
-export const member = sqliteTable("member", {
+export const member = pgTable("member", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -64,10 +64,10 @@ export const member = sqliteTable("member", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
 });
 
-export const invitation = sqliteTable("invitation", {
+export const invitation = pgTable("invitation", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -77,14 +77,14 @@ export const invitation = sqliteTable("invitation", {
   email: text("email").notNull(),
   role: text("role"),
   status: text("status").notNull(),
-  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
   inviterId: text("inviter_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
 });
 
-export const account = sqliteTable("account", {
+export const account = pgTable("account", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
@@ -96,27 +96,23 @@ export const account = sqliteTable("account", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
-  accessTokenExpiresAt: integer("access_token_expires_at", {
-    mode: "timestamp",
-  }),
-  refreshTokenExpiresAt: integer("refresh_token_expires_at", {
-    mode: "timestamp",
-  }),
+  accessTokenExpiresAt: timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
   scope: text("scope"),
   password: text("password"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
 });
 
-export const verification = sqliteTable("verification", {
+export const verification = pgTable("verification", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => createId()),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }),
-  updatedAt: integer("updated_at", { mode: "timestamp" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
 export const UserSelectSchema = createSelectSchema(user);
