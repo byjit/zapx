@@ -25,6 +25,11 @@
       "source": "aruntemme/surge-deploy",
       "sourceType": "github",
       "computedHash": "bd7bb011c7f8f6d70fe36075462084394c6500fbf9b750aa94bd190da815e731"
+    },
+    "x402-payments": {
+      "source": "aznatkoiny/zai-skills",
+      "sourceType": "github",
+      "computedHash": "6f0423b0e6a655935f42b5fb40425dcb4a9f19540b7f5af4c152edaa3b821b4a"
     }
   }
 }

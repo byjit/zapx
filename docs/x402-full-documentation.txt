@@ -1,0 +1,33 @@
+# x402
+
+NOTE: In this file you will find the relevant links to the documentation pages that you can fetch To understand more about a particular documentation page.
+
+## Docs
+
+- [Lifecycle Hooks](https://docs.x402.org/advanced-concepts/lifecycle-hooks.md): This page explains how to use lifecycle hooks to customize x402 payment flows.
+- [Client / Server](https://docs.x402.org/core-concepts/client-server.md): This page explains the roles and responsibilities of the **client** and **server** in the x402 protocol.
+- [Facilitator](https://docs.x402.org/core-concepts/facilitator.md): This page explains the role of the **facilitator** in the x402 protocol.
+- [HTTP 402](https://docs.x402.org/core-concepts/http-402.md): For decades, HTTP 402 Payment Required has been reserved for future use. x402 unlocks it, and [absolves the internet of its original sin](https://economyofbits.substack.com/p/marc-andreessens-original-sin).
+- [Networks & Token Support](https://docs.x402.org/core-concepts/network-and-token-support.md): This page explains which blockchain networks and tokens are supported by x402, and how to extend support to additional networks.
+- [Wallet](https://docs.x402.org/core-concepts/wallet.md): This page explains the role of the **wallet** in the x402 protocol.
+- [Bazaar (Discovery Layer)](https://docs.x402.org/extensions/bazaar.md): The x402 Bazaar is the discovery layer for the x402 ecosystem - a machine-readable catalog that helps developers and AI agents find and integrate with x402-compatible API endpoints and MCP tools.
+- [Payment-Identifier (Idempotency)](https://docs.x402.org/extensions/payment-identifier.md): The payment-identifier extension enables idempotency for x402 payments, allowing clients to safely retry requests without duplicate payment processing.
+- [Sign-In-With-X (SIWX)](https://docs.x402.org/extensions/sign-in-with-x.md): CAIP-122 wallet authentication for x402-protected resources. Prove wallet ownership to access previously purchased content without repaying.
+- [FAQ](https://docs.x402.org/faq.md)
+- [Quickstart for Buyers](https://docs.x402.org/getting-started/quickstart-for-buyers.md): This guide walks you through how to use **x402** to interact with services that require payment. By the end of this guide, you will be able to programmatically discover payment requirements, complete a payment, and access a paid resource.
+- [Quickstart for Sellers](https://docs.x402.org/getting-started/quickstart-for-sellers.md): This guide walks you through integrating with **x402** to enable payments for your API or service. By the end, your API will be able to charge buyers and AI agents for access.
+- [MCP Server with x402](https://docs.x402.org/guides/mcp-server-with-x402.md): [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is a protocol for passing context between LLMs and other AI agents. This page shows how to use the x402 payment protocol with MCP to make paid API requests through an MCP server, and how to connect it to Claude Desktop.
+- [Migration Guide: V1 to V2](https://docs.x402.org/guides/migration-v1-to-v2.md): This guide helps you migrate from x402 V1 to V2. The V2 protocol introduces standardized identifiers, improved type safety, and a more modular architecture.
+- [Welcome to x402](https://docs.x402.org/introduction.md): This guide will help you understand x402, the open payment standard, and help you get started building or integrating services with x402.
+- [SDK Features](https://docs.x402.org/sdk-features.md): Feature parity across TypeScript, Go, and Python SDKs
+
+## OpenAPI Specs
+
+- [openapi](https://docs.x402.org/api-reference/openapi.json)
+
+## Optional
+
+- [x402.org](https://x402.org)
+- [GitHub](https://github.com/coinbase/x402)
+- [Discord](https://discord.gg/cdp)
+- [Vercel Starter](https://vercel.com/templates/ai/x402-ai-starter)
