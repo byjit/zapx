@@ -1,0 +1,40 @@
+{
+  "name": "turborepo-boilerplate",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "prebuild": "ultracite fix && biome check --diagnostic-level=error .",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:native": "turbo -F native dev",
+    "dev:web": "turbo -F web dev",
+    "dev:server": "turbo -F server dev",
+    "db:studio": "turbo -F @turborepo-boilerplate/db db:studio",
+    "db:generate": "turbo -F @turborepo-boilerplate/db db:generate",
+    "db:local": "turbo -F @turborepo-boilerplate/db db:local",
+    "db:sync": "turbo -F @turborepo-boilerplate/db db:sync",
+    "db:sync:local": "turbo -F @turborepo-boilerplate/db db:sync:local",
+    "email-preview": "turbo -F @turborepo-boilerplate/services email-preview",
+    "docker:prod:build": "docker compose -f docker-compose.prod.yml build",
+    "docker:prod:up": "docker compose -f docker-compose.prod.yml up -d",
+    "docker:prod:down": "docker compose -f docker-compose.prod.yml down",
+    "docker:prod:logs": "docker compose -f docker-compose.prod.yml logs -f"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.2.5",
+    "@types/node": "^25.3.5",
+    "tsdown": "^0.21.0",
+    "turbo": "^2.8.14",
+    "ultracite": "5.6.1"
+  },
+  "packageManager": "pnpm@10.30.3"
+}

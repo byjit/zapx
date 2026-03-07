@@ -1,0 +1,26 @@
+{
+  "name": "@turborepo-boilerplate/cache",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "clean": "rm -rf dist",
+    "dev": "tsdown --watch",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@turborepo-boilerplate/env": "workspace:*",
+    "@turborepo-boilerplate/services": "workspace:*",
+    "rate-limiter-flexible": "^9.1.1"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:",
+    "typescript": "catalog:"
+  }
+}

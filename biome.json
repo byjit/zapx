@@ -1,0 +1,59 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**/*",
+      "!**/*.css",
+      "!**/*.json",
+      "!**/.next/**/*",
+      "!**/dist/**/*",
+      "!**/.turbo/**/*",
+      "!**/dev-dist/**/*",
+      "!apps/web/src/components/ui/**/*",
+      "!apps/web/src/components/ai-elements/**/*",
+      "!**/.zed/**/*",
+      "!**/.vscode/**/*",
+      "!**/routeTree.gen.ts",
+      "!**/src-tauri/**/*",
+      "!**/.nuxt/**/*",
+      "!bts.jsonc",
+      "!**/.expo/**/*",
+      "!**/.wrangler/**/*",
+      "!**/.alchemy/**/*",
+      "!**/.svelte-kit/**/*",
+      "!**/wrangler.jsonc",
+      "!**/.source/**/*"
+    ]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "security": {
+        "noDangerouslySetInnerHtml": "warn"
+      },
+      "correctness": {
+        "noUnusedVariables": "warn",
+        "noUnusedImports": {
+          "level": "warn",
+          "fix": "safe"
+        },
+        "useExhaustiveDependencies": "off"
+      },
+      "suspicious": "off",
+      "style": "off",
+      "performance": {
+        "noImgElement": "off",
+        "noBarrelFile": "off",
+        "noNamespaceImport": "off"
+      },
+      "nursery": "off",
+      "a11y": "warn",
+      "complexity": {
+        "noExcessiveLinesPerFunction": "off"
+      }
+    }
+  },
+  "extends": ["ultracite"]
+}

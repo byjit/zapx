@@ -1,0 +1,37 @@
+# .github/workflows/surge-deploy.yml
+# Auto-deploy to surge.sh on push to main
+#
+# Required secrets:
+#   SURGE_LOGIN - your surge.sh email
+#   SURGE_TOKEN - your surge token (run `surge token` locally)
+#
+# Required variables:
+#   SURGE_DOMAIN - e.g. my-project.surge.sh
+
+name: Deploy to Surge
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Surge
+        run: npx surge ./dist ${{ vars.SURGE_DOMAIN }}
+        env:
+          SURGE_LOGIN: ${{ secrets.SURGE_LOGIN }}
+          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}

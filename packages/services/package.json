@@ -1,0 +1,38 @@
+{
+  "name": "@turborepo-boilerplate/services",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./src/*"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "email-preview": "email dev --port 3002 --dir src/email/templates"
+  },
+  "dependencies": {
+    "@react-email/components": "0.5.6",
+    "@react-email/tailwind": "^2.0.5",
+    "@turborepo-boilerplate/env": "workspace:*",
+    "dotenv": "catalog:",
+    "ioredis": "^5.10.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "resend": "^6.9.3",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.14",
+    "@types/react-dom": "~19.2.3",
+    "react-email": "4.3.0",
+    "tsdown": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

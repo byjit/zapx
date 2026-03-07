@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>surge-deploy — Agent Skill for Static Deployments</title>
+    <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "Courier New", monospace;
+      background: #ffffff;
+      color: #1d1d1f;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #555;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 3px 8px;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: #444;
+      margin-bottom: 48px;
+    }
+
+    .install-block {
+      background: #f5f5f7;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 48px;
+      position: relative;
+    }
+
+    .install-block code {
+      font-size: 14px;
+      color: #1d1d1f;
+    }
+
+    .install-block .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: 1px solid #d2d2d7;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-family: inherit;
+      font-size: 11px;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover {
+      border-color: #1d1d1f;
+      color: #1d1d1f;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #333;
+      margin-bottom: 16px;
+    }
+
+    p {
+      font-size: 14px;
+      color: #1d1d1f;
+      margin-bottom: 12px;
+    }
+
+    .frameworks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .frameworks span {
+      font-size: 13px;
+      color: #1d1d1f;
+      background: #f5f5f7;
+      border-radius: 4px;
+      padding: 4px 10px;
+    }
+
+    .flow {
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .flow li {
+      font-size: 14px;
+      padding: 8px 0;
+      padding-left: 32px;
+      position: relative;
+      color: #1d1d1f;
+      border-bottom: 1px solid #f5f5f7;
+    }
+
+    .flow li:last-child {
+      border-bottom: none;
+    }
+
+    .flow li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      font-size: 12px;
+      color: #555;
+      width: 20px;
+      height: 20px;
+      border: 1px solid #aaa;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      top: 9px;
+    }
+
+    .trigger-list {
+      list-style: none;
+    }
+
+    .trigger-list li {
+      font-size: 14px;
+      padding: 6px 0;
+      color: #444;
+    }
+
+    .trigger-list li code {
+      color: #1d1d1f;
+      background: #f5f5f7;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .agents {
+      font-size: 13px;
+      color: #333;
+      line-height: 2;
+    }
+
+    .divider {
+      height: 1px;
+      background: #f5f5f7;
+      margin: 40px 0;
+    }
+
+    footer {
+      font-size: 12px;
+      color: #555;
+    }
+
+    footer a {
+      color: #555;
+      text-decoration: none;
+      border-bottom: 1px solid #aaa;
+    }
+
+    footer a:hover {
+      color: #1d1d1f;
+      border-color: #1d1d1f;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .feature-grid .item {
+      font-size: 13px;
+      padding: 12px;
+      background: #f5f5f7;
+      border-radius: 6px;
+    }
+
+    .feature-grid .item .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    .feature-grid .item .value {
+      color: #1d1d1f;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 48px 20px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="badge">Agent Skill</div>
+
+      <h1>surge-deploy</h1>
+      <p class="subtitle">
+        Deploy any static build to the web in seconds. One command. No config.
+      </p>
+
+      <div class="install-block">
+        <div class="label">Install</div>
+        <code>npx skills add aruntemme/surge-deploy</code>
+        <button class="copy-btn" onclick="copy(this)">Copy</button>
+      </div>
+
+      <section>
+        <h2>How it works</h2>
+        <ol class="flow">
+          <li>Checks surge is installed and authenticated</li>
+          <li>Detects your build folder automatically</li>
+          <li>Handles SPA routing (creates 200.html)</li>
+          <li>Deploys to surge.sh</li>
+          <li>Saves domain in .surge-domain for re-deploys</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Trigger with</h2>
+        <ul class="trigger-list">
+          <li>
+            <code>/static-deploy</code>
+          </li>
+          <li>
+            <code>deploy to surge</code>
+          </li>
+          <li>
+            <code>static deploy this project</code>
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Frameworks</h2>
+        <div class="frameworks">
+          <span>React</span>
+          <span>Vite</span>
+          <span>Vue</span>
+          <span>Next.js</span>
+          <span>Astro</span>
+          <span>SvelteKit</span>
+          <span>Hugo</span>
+          <span>11ty</span>
+          <span>HTML</span>
+        </div>
+        <p style="font-size: 13px; color: #555;">
+          Anything that produces a build folder.
+        </p>
+      </section>
+
+      <section>
+        <h2>Features</h2>
+        <div class="feature-grid">
+          <div class="item">
+            <div class="label">Domain Memory</div>
+            <div class="value">Remembers URL per project via .surge-domain</div>
+          </div>
+          <div class="item">
+            <div class="label">Preflight</div>
+            <div class="value">
+              Validates auth, build, index.html before deploy
+            </div>
+          </div>
+          <div class="item">
+            <div class="label">SPA Support</div>
+            <div class="value">
+              Auto-creates 200.html for client-side routing
+            </div>
+          </div>
+          <div class="item">
+            <div class="label">CI/CD</div>
+            <div class="value">
+              GitHub Actions and GitLab CI templates included
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Compatible Agents</h2>
+        <p class="agents">
+          Claude Code, Cursor, GitHub Copilot, Codex, Windsurf, Cline, Amp,
+          Goose, OpenCode, Roo Code, and any agent supporting the
+          <a
+            href="https://agentskills.io/"
+            style="color: #333; border-bottom: 1px solid #aaa;"
+            >Agent Skills</a
+          >standard.
+        </p>
+      </section>
+
+      <div class="divider"></div>
+
+      <footer>
+        <a href="https://github.com/aruntemme/surge-deploy"
+          >GitHub</a
+        >&nbsp;&middot;&nbsp;
+        <a href="https://surge.sh">surge.sh</a>&nbsp;&middot;&nbsp;
+        <a href="https://agentskills.io">agentskills.io</a>
+      </footer>
+    </div>
+
+    <script>
+    function copy(btn) {
+      navigator.clipboard.writeText('npx skills add aruntemme/surge-deploy');
+      btn.textContent = 'Copied';
+      setTimeout(() => btn.textContent = 'Copy', 1500);
+    }
+  </script>
+  </body>
+</html>

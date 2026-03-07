@@ -1,0 +1,61 @@
+services:
+  nginx:
+    image: nginx:1.28-alpine
+    depends_on:
+      - web
+      - server
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SERVER_URL: ${PUBLIC_APP_URL:-http://localhost}
+        VITE_SITE_URL: ${PUBLIC_APP_URL:-http://localhost}
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    env_file:
+      - apps/server/.env
+    environment:
+      NODE_ENV: production
+      PORT: 8000
+      CORS_ORIGIN: ${PUBLIC_APP_URL:-http://localhost}
+      BASE_URL: ${PUBLIC_APP_URL:-http://localhost}
+      ALLOW_OPENAPI: ${ALLOW_OPENAPI:-false}
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

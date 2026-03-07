@@ -1,0 +1,44 @@
+{
+  "name": "@turborepo-boilerplate/api",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./routers": {
+      "types": "./dist/routers/index.d.ts",
+      "default": "./src/routers/index.ts"
+    },
+    "./routers/*": {
+      "types": "./dist/routers/*.d.ts",
+      "default": "./src/routers/*.ts"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsdown"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "catalog:",
+    "@trpc/client": "catalog:",
+    "@trpc/server": "catalog:",
+    "@turborepo-boilerplate/auth": "workspace:*",
+    "@turborepo-boilerplate/db": "workspace:*",
+    "ai": "catalog:",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "drizzle-orm": "catalog:",
+    "trpc-to-openapi": "^3.1.0",
+    "zod": "catalog:"
+  }
+}
