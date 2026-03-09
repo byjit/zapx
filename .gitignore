@@ -1,3 +1,4 @@
+.stash/
 # Dependencies
 node_modules
 .pnp

@@ -4,6 +4,21 @@
 
 ---
 
+## Official x402 Documentation
+
+| Page | URL | Purpose |
+|------|-----|---------|
+| HTTP 402 | https://docs.x402.org/core-concepts/http-402.md | Core protocol, headers |
+| Client/Server | https://docs.x402.org/core-concepts/client-server.md | Roles, flow |
+| Facilitator | https://docs.x402.org/core-concepts/facilitator.md | Verify/settle flow |
+| Networks & Tokens | https://docs.x402.org/core-concepts/network-and-token-support.md | CAIP-2, EIP-3009 |
+| Payment-Identifier | https://docs.x402.org/extensions/payment-identifier.md | Idempotency |
+| Bazaar | https://docs.x402.org/extensions/bazaar.md | Discovery layer |
+| Lifecycle Hooks | https://docs.x402.org/advanced-concepts/lifecycle-hooks.md | Custom logic |
+| Quickstart Sellers | https://docs.x402.org/getting-started/quickstart-for-sellers.md | Implementation |
+
+---
+
 # 1. Overview
 
 This platform allows developers to monetize APIs on a per-request basis using the x402 payment protocol.
@@ -127,7 +142,7 @@ Payment requirement format (x402 V2):
 }
 ```
 
-Uses CAIP-2 network identifiers (e.g. `eip155:84532` for Base Sepolia). Zapx uses the `exact` scheme for MVP with USDC.
+Uses CAIP-2 network identifiers (e.g. `eip155:84532` for Base Sepolia). Zapx uses the `exact` scheme for MVP with USDC. Other schemes: `upto` (pay up to max based on usage) and `deferred` (batched settlement) are proposed for future use.
 
 ---
 
@@ -322,7 +337,7 @@ User (provider for billing)
         └── API (OpenAPI spec + endpoints + pricing)
 ```
 
-Gateway routes by project or API slug: `gateway.platform.com/{project_slug}/{route}` or `gateway.platform.com/{api_slug}/{route}`.
+Gateway routes by project ID or API slug: `gateway.platform.com/{project_id}/{route}` or `gateway.platform.com/{api_slug}/{route}`.
 
 ---
 
@@ -373,7 +388,7 @@ return response
 Gateway endpoint format:
 
 ```
-gateway.platform.com/{project_slug}/{endpoint}
+gateway.platform.com/{project_id}/{endpoint}
 ```
 or
 ```
@@ -658,7 +673,7 @@ Gateway uses facilitator for verify/settle. Configure per environment:
 1. User signs up in web
 2. User creates a project and uploads OpenAPI spec
 3. Control API parses endpoints, stores pricing config
-4. Client calls `gateway/:project_slug/:route` (or `/:api_slug/:route`)
+4. Client calls `gateway/:project_id/:route` (or `/:api_slug/:route`)
 5. If unpaid → gateway returns 402 challenge
 6. Client retries with x402 payment headers
 7. Gateway validates request id, idempotency, price config (use `payment-identifier` extension)
@@ -800,7 +815,7 @@ Low latency is critical for adoption.
 
 Start simple.
 
-**Platform token:** USDC stablecoin for all payments.
+**Platform token:** USDC stablecoin for all payments. Price strings like `"$0.001"` infer USDC; the SDK converts to atomic units (6 decimals for USDC).
 
 Supported:
 
@@ -843,7 +858,7 @@ Endpoints:
 ```
 /apis
 /apis/search
-/apis/{project_slug}
+/apis/{project_id}
 /apis/{category}
 ```
 

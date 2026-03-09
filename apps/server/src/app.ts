@@ -1,4 +1,3 @@
-import { google } from "@ai-sdk/google";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { createContext } from "@turborepo-boilerplate/api/context";
 import { appRouter } from "@turborepo-boilerplate/api/routers/index";
@@ -9,7 +8,6 @@ import {
   isRateLimitResult,
 } from "@turborepo-boilerplate/cache";
 import { env } from "@turborepo-boilerplate/env";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
 import { toNodeHandler } from "better-auth/node";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -219,15 +217,6 @@ export const createServer = (): Express => {
   // Health check endpoint (excluded from logging)
   app.get("/health", (_req, res) => {
     res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
-  });
-
-  app.post("/ai", async (req, res) => {
-    const { messages = [] } = (req.body || {}) as { messages: UIMessage[] };
-    const result = streamText({
-      model: google("gemini-2.5-flash"),
-      messages: await convertToModelMessages(messages),
-    });
-    result.pipeUIMessageStreamToResponse(res);
   });
 
   app.get("/", (_req, res) => {
