@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import {
   createProject,
   deleteProjectByIdForUser,
@@ -5,7 +6,6 @@ import {
   listProjectsByUser,
   updateProjectByIdForUser,
 } from "@turborepo-boilerplate/db/project";
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 
@@ -21,15 +21,18 @@ export const projectRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-        const project = await getProjectByIdForUser(input.id, ctx.session.user.id);
-        if (!project) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Project not found",
-          });
-        }
+      const project = await getProjectByIdForUser(
+        input.id,
+        ctx.session.user.id
+      );
+      if (!project) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Project not found",
+        });
+      }
 
-        return project;
+      return project;
     }),
 
   create: protectedProcedure
@@ -40,11 +43,11 @@ export const projectRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-        return await createProject({
-          userId: ctx.session.user.id,
-          name: input.name.trim(),
-          description: input.description?.trim(),
-        });
+      return await createProject({
+        userId: ctx.session.user.id,
+        name: input.name.trim(),
+        description: input.description?.trim(),
+      });
     }),
 
   update: protectedProcedure
@@ -56,29 +59,33 @@ export const projectRouter = router({
             name: z.string().min(1).max(120).optional(),
             description: z.string().max(1000).nullable().optional(),
           })
-          .refine((value) => Object.values(value).some((field) => field !== undefined), {
-            message: "At least one field is required to update a project",
-          }),
+          .refine(
+            (value) =>
+              Object.values(value).some((field) => field !== undefined),
+            {
+              message: "At least one field is required to update a project",
+            }
+          ),
       })
     )
     .mutation(async ({ ctx, input }) => {
-        const updatedProject = await updateProjectByIdForUser({
-          id: input.id,
-          userId: ctx.session.user.id,
-          data: {
-            name: input.data.name?.trim(),
-            description: input.data.description?.trim() ?? input.data.description,
-          },
+      const updatedProject = await updateProjectByIdForUser({
+        id: input.id,
+        userId: ctx.session.user.id,
+        data: {
+          name: input.data.name?.trim(),
+          description: input.data.description?.trim() ?? input.data.description,
+        },
+      });
+
+      if (!updatedProject) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Project not found",
         });
+      }
 
-        if (!updatedProject) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Project not found",
-          });
-        }
-
-        return updatedProject;
+      return updatedProject;
     }),
 
   delete: protectedProcedure
@@ -88,21 +95,21 @@ export const projectRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-        const deletedProject = await deleteProjectByIdForUser(
-          input.id,
-          ctx.session.user.id
-        );
+      const deletedProject = await deleteProjectByIdForUser(
+        input.id,
+        ctx.session.user.id
+      );
 
-        if (!deletedProject) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Project not found",
-          });
-        }
+      if (!deletedProject) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Project not found",
+        });
+      }
 
-        return {
-          success: true,
-          project: deletedProject,
-        };
+      return {
+        success: true,
+        project: deletedProject,
+      };
     }),
 });

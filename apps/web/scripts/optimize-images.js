@@ -9,7 +9,7 @@ const PUBLIC_DIR = path.resolve(__dirname, "../public");
 // Target sizes for optimization
 const OG_IMAGE_MAX_SIZE = 1200;
 const OG_IMAGE_QUALITY = 80;
-const THUMBNAIL_SIZE = 600;
+const IMAGE_EXT_REGEX = /\.(png|jpg|jpeg)$/i;
 
 async function optimizeImage(inputPath, outputPath, options = {}) {
   const {
@@ -33,10 +33,7 @@ async function optimizeImage(inputPath, outputPath, options = {}) {
 
     // Generate optimized formats
     for (const format of formats) {
-      const outputFilePath = outputPath.replace(
-        /\.(png|jpg|jpeg)$/i,
-        `.${format}`
-      );
+      const outputFilePath = outputPath.replace(IMAGE_EXT_REGEX, `.${format}`);
 
       await sharp(inputPath)
         .resize({ width, height })

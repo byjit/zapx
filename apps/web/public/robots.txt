@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
 
+# Disallow auth and admin routes
+Disallow: /dashboard
+Disallow: /billing
+Disallow: /ai
+Disallow: /settings
+Disallow: /admin
+
 Sitemap: https://turborepo-boilerplate.com/sitemap.xml

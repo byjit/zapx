@@ -1,6 +1,10 @@
 import { createId } from "@paralleldrive/cuid2";
 import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema, createUpdateSchema } from "drizzle-zod";
+import {
+  createInsertSchema,
+  createSelectSchema,
+  createUpdateSchema,
+} from "drizzle-zod";
 import type z from "zod";
 import { user } from "./auth";
 
@@ -18,11 +22,8 @@ export const project = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [
-    index("project_user_id_idx").on(table.userId),
-  ]
+  (table) => [index("project_user_id_idx").on(table.userId)]
 );
-
 
 export const ProjectSelectSchema = createSelectSchema(project);
 export const ProjectInsertSchema = createInsertSchema(project);

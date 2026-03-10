@@ -12,7 +12,11 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
   PORT: z.coerce.number().default(8000),
-  ALLOW_OPENAPI: z.boolean().default(true),
+  ALLOW_OPENAPI: z
+    .string()
+    .optional()
+    .default("true")
+    .transform((val) => val === "true"),
   BASE_URL: z.url().default("http://localhost:8000"),
   CORS_ORIGIN: z.string().optional(),
   GOOGLE_GENERATIVE_AI_API_KEY: z

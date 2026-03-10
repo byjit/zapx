@@ -46,7 +46,8 @@
       "performance": {
         "noImgElement": "off",
         "noBarrelFile": "off",
-        "noNamespaceImport": "off"
+        "noNamespaceImport": "off",
+        "useTopLevelRegex": "off"
       },
       "nursery": "off",
       "a11y": "warn",
@@ -55,5 +56,21 @@
       }
     }
   },
-  "extends": ["ultracite"]
+  "extends": ["ultracite"],
+  "overrides": [
+    {
+      "includes": [
+        "apps/web/src/routes/(public)/about.tsx",
+        "apps/web/src/routes/(public)/privacy.tsx",
+        "apps/web/src/routes/(public)/terms.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "security": {
+            "noDangerouslySetInnerHtml": "off"
+          }
+        }
+      }
+    }
+  ]
 }

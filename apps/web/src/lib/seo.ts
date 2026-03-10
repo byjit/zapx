@@ -4,20 +4,19 @@ type HeadConfig = {
   scripts?: Array<{ type: string; children: string }>;
 };
 
-const SITE_NAME = "Turborepo Boilerplate";
+const SITE_NAME = "Zapx";
 const SITE_DESCRIPTION =
-  "Production-ready Turborepo starter with AI integrations, auth, payments, and modern DX.";
+  "Monetize APIs on a per-request basis using the x402 payment protocol with custodial aggregation.";
 const SITE_AUTHOR = "Prasanjit Dutta";
-const DEFAULT_TITLE = `${SITE_NAME} | Start your project with ease`;
-// Use AVIF format for optimal loading (with WebP/JPEG fallback in meta tags)
+const DEFAULT_TITLE = `${SITE_NAME} | Monetize APIs with instant payments`;
 const DEFAULT_IMAGE = "/og-image.avif";
 const DEFAULT_KEYWORDS = [
-  "turborepo boilerplate",
-  "typescript starter",
-  "react turborepo",
-  "ai ready boilerplate",
-  "shadcn ui",
-  "tanstack router",
+  "api monetization",
+  "pay per request",
+  "x402 protocol",
+  "usdc payments",
+  "api gateway",
+  "machine payments",
 ];
 
 const FALLBACK_SITE_URL = "https://turborepo-boilerplate.com";

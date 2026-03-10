@@ -110,7 +110,8 @@ export const createServer = (): Express => {
       logger.error({
         type: "error",
         message: `Rate limiter unavailable: ${rateLimiterError.message}`,
-        stack: env.NODE_ENV === "development" ? rateLimiterError.stack : undefined,
+        stack:
+          env.NODE_ENV === "development" ? rateLimiterError.stack : undefined,
         requestId,
         method: req.method,
         url: req.originalUrl,

@@ -1,42 +1,23 @@
 import { Link } from "@tanstack/react-router";
 import { seoConstants } from "@/lib/seo";
-import { CONTACT_FORM } from "@/utils/constant";
 
 const Footer = () => {
   return (
-    <footer className="py-6 mt-auto">
-      <div className="container flex justify-between mx-auto px-4 px-4">
-        <p className="text-sm mb-4">
-          &copy; {new Date().getFullYear()} {seoConstants.SITE_NAME}. All rights
-          reserved.
+    <footer className="border-t border-border py-8 mt-12">
+      <div className="flex flex-col sm:flex-row justify-between gap-4 text-xs text-muted-foreground">
+        <p>
+          &copy; {new Date().getFullYear()} {seoConstants.SITE_NAME}
         </p>
-        <div className="flex justify-center space-x-6 text-sm">
-          <Link
-            className="hover:text-blue-600 transition-colors duration-300"
-            to="/about"
-          >
-            About
+        <div className="flex gap-6">
+          <Link className="hover:text-foreground transition-colors" to="/terms">
+            Terms
           </Link>
           <Link
-            className="hover:text-blue-600 transition-colors duration-300"
+            className="hover:text-foreground transition-colors"
             to="/privacy"
           >
             Privacy
           </Link>
-          <Link
-            className="hover:text-blue-600 transition-colors duration-300"
-            to="/terms"
-          >
-            Terms
-          </Link>
-          <a
-            className="hover:text-blue-600 transition-colors duration-300"
-            href={CONTACT_FORM}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Contact
-          </a>
         </div>
       </div>
     </footer>

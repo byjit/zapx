@@ -1,27 +1,18 @@
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LoginButton } from "../login-button";
 
 export default function Hero() {
   return (
-    <section className="mb-20 flex flex-col justify-center items-center gap-6 text-center">
-      <h1 className="text-5xl font-normal tracking-tight">
-        The best template, <br />
-        for you
+    <section className="pt-16 pb-12 md:pt-24 md:pb-16 space-y-6">
+      <h1 className="text-4xl md:text-5xl leading-tight tracking-tight">
+        Monetize APIs
+        <br />
+        with instant payments
       </h1>
-
-      <p className="max-w-lg text-muted-foreground leading-relaxed">
-        Build super fast, optimized Next.js applications with this boilerplate,
-        featuring TypeScript, Tailwind CSS, and tRPC integration.
+      <p className="max-w-md text-muted-foreground leading-relaxed">
+        Turn any API into a pay-per-request service using the x402 protocol. No
+        subscriptions. No API keys. Just instant USDC payments.
       </p>
-
-      <div className="flex items-center gap-4">
-        <a href={"/login"}>
-          <Button className="rounded-full" size={"lg"}>
-            Get started
-            <ArrowRight />
-          </Button>
-        </a>
-      </div>
+      <LoginButton text="Start now" showArrow />
     </section>
   );
 }

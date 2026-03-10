@@ -5,5 +5,8 @@ export default defineConfig({
   format: "esm",
   outDir: "./dist",
   clean: true,
-  noExternal: [/@turborepo-boilerplate\/.*/],
+  deps: {
+    alwaysBundle: [/@turborepo-boilerplate\/.*/],
+    onlyAllowBundle: false,
+  },
 });

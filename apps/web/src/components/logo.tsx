@@ -1,4 +1,4 @@
-import { Mountain } from "lucide-react";
+import { Zap } from "lucide-react";
 import { seoConstants } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -13,9 +13,9 @@ export const Logo = ({
 }) => {
   return (
     <div className="flex items-center gap-1">
-      <Mountain className={cn("w-4 h-4", className)} />
+      <Zap strokeWidth={2.5} className={cn("size-5", className)} />
       {showText && (
-        <span className={cn("font-medium", textStyle)}>
+        <span className={cn("text-lg font-bold", textStyle)}>
           {seoConstants.SITE_NAME}
         </span>
       )}

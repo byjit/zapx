@@ -81,7 +81,7 @@ export function OrganizationMembers({
       });
       toast.success("Role updated");
       fetchMembers();
-    } catch (e) {
+    } catch (_e) {
       toast.error("Failed to update role");
     }
   };
