@@ -1,8 +1,8 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  Brain,
   ChevronsUpDown,
   CreditCard,
+  FolderKanban,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -41,9 +41,9 @@ const mainItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "AI Playground",
-    url: "/ai",
-    icon: Brain,
+    title: "Projects",
+    url: "/projects",
+    icon: FolderKanban,
   },
 ];
 
@@ -86,8 +86,8 @@ export function AppSidebar() {
                   <Logo className="size-4" showText={false} />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Boilerplate</span>
-                  <span className="truncate text-xs">Enterprise</span>
+                  <span className="truncate font-semibold">Zapx</span>
+                  <span className="truncate text-xs">API Gateway</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -103,7 +103,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={router.location.pathname === item.url}
+                    isActive={router.location.pathname.startsWith(item.url)}
                     tooltip={item.title}
                   >
                     <Link to={item.url}>
@@ -117,14 +117,14 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupLabel>Account</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {settingsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={router.location.pathname === item.url}
+                    isActive={router.location.pathname.startsWith(item.url)}
                     tooltip={item.title}
                   >
                     <Link to={item.url}>

@@ -1,0 +1,222 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { format } from "date-fns";
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
+import Loader from "@/components/loader";
+import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
+import { ProjectDialog } from "@/components/projects/project-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Separator } from "@/components/ui/separator";
+import { buildSeoHead } from "@/lib/seo";
+import { trpc } from "@/utils/trpc";
+
+export const Route = createFileRoute("/_auth/projects/$projectId")({
+  component: ProjectDetailPage,
+  head: () =>
+    buildSeoHead({
+      title: "Project | Zapx",
+      description: "View and manage your project.",
+      path: "/projects",
+      noIndex: true,
+    }),
+});
+
+function ProjectDetailPage() {
+  const { projectId } = Route.useParams();
+  const navigate = useNavigate();
+  const utils = trpc.useUtils();
+
+  const { data: project, isLoading } = trpc.project.getById.useQuery({
+    id: projectId,
+  });
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const deleteMutation = trpc.project.delete.useMutation({
+    onSuccess: () => {
+      utils.project.list.invalidate();
+      navigate({ to: "/projects" });
+    },
+  });
+
+  if (isLoading) return <Loader />;
+
+  if (!project) {
+    return (
+      <div className="space-y-4">
+        <Link to="/projects">
+          <Button variant="ghost" size="sm" className="gap-1.5">
+            <ArrowLeft className="size-3.5" />
+            Back to projects
+          </Button>
+        </Link>
+        <Empty className="min-h-[300px] border">
+          <EmptyHeader>
+            <EmptyTitle>Project not found</EmptyTitle>
+            <EmptyDescription>
+              This project may have been deleted or you don't have access.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Link to="/projects">
+              <Button variant="outline">Go to Projects</Button>
+            </Link>
+          </EmptyContent>
+        </Empty>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Link to="/projects">
+              <Button variant="ghost" size="icon-sm">
+                <ArrowLeft className="size-4" />
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {project.name}
+            </h1>
+          </div>
+          {project.description && (
+            <p className="text-muted-foreground ml-9">{project.description}</p>
+          )}
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon-sm">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setEditOpen(true)}>
+              <Pencil className="size-3.5 mr-1.5" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="size-3.5 mr-1.5" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <Separator />
+
+      {/* Project metadata */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription className="flex items-center gap-1.5">
+              <Calendar className="size-3.5" />
+              Created
+            </CardDescription>
+            <CardTitle className="text-sm font-medium">
+              {format(new Date(project.createdAt), "MMM d, yyyy")}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card size="sm">
+          <CardHeader>
+            <CardDescription className="flex items-center gap-1.5">
+              <Clock className="size-3.5" />
+              Last Updated
+            </CardDescription>
+            <CardTitle className="text-sm font-medium">
+              {format(new Date(project.updatedAt), "MMM d, yyyy 'at' h:mm a")}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* APIs section — placeholder for Phase 1.2 */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">APIs</h2>
+        </div>
+        <Empty className="min-h-[200px] border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="size-4"
+              >
+                <path d="M4 12h16" />
+                <path d="M4 6h16" />
+                <path d="M4 18h16" />
+              </svg>
+            </EmptyMedia>
+            <EmptyTitle>No APIs registered</EmptyTitle>
+            <EmptyDescription>
+              Upload an OpenAPI spec to register your first API in this project.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" disabled>
+              Upload OpenAPI Spec (coming soon)
+            </Button>
+          </EmptyContent>
+        </Empty>
+      </div>
+
+      {/* Edit dialog */}
+      <ProjectDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        project={project}
+      />
+
+      {/* Delete dialog */}
+      <DeleteProjectDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        projectName={project.name}
+        onConfirm={() => deleteMutation.mutate({ id: project.id })}
+        isPending={deleteMutation.isPending}
+      />
+    </div>
+  );
+}

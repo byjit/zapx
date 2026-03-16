@@ -22,7 +22,9 @@ import { Route as publicSuccessRouteImport } from './routes/(public)/success'
 import { Route as publicPrivacyRouteImport } from './routes/(public)/privacy'
 import { Route as publicLoginRouteImport } from './routes/(public)/login'
 import { Route as publicAboutRouteImport } from './routes/(public)/about'
+import { Route as AuthProjectsIndexRouteImport } from './routes/_auth/projects/index'
 import { Route as publicBlogIndexRouteImport } from './routes/(public)/blog/index'
+import { Route as AuthProjectsProjectIdRouteImport } from './routes/_auth/projects/$projectId'
 import { Route as publicBlogSlugRouteImport } from './routes/(public)/blog/$slug'
 
 const AuthRoute = AuthRouteImport.update({
@@ -90,10 +92,20 @@ const publicAboutRoute = publicAboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthProjectsIndexRoute = AuthProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => AuthRoute,
+} as any)
 const publicBlogIndexRoute = publicBlogIndexRouteImport.update({
   id: '/(public)/blog/',
   path: '/blog/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthProjectsProjectIdRoute = AuthProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => AuthRoute,
 } as any)
 const publicBlogSlugRoute = publicBlogSlugRouteImport.update({
   id: '/(public)/blog/$slug',
@@ -115,7 +127,9 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthSettingsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/blog/$slug': typeof publicBlogSlugRoute
+  '/projects/$projectId': typeof AuthProjectsProjectIdRoute
   '/blog/': typeof publicBlogIndexRoute
+  '/projects/': typeof AuthProjectsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof publicIndexRoute
@@ -131,7 +145,9 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthSettingsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/blog/$slug': typeof publicBlogSlugRoute
+  '/projects/$projectId': typeof AuthProjectsProjectIdRoute
   '/blog': typeof publicBlogIndexRoute
+  '/projects': typeof AuthProjectsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,7 +165,9 @@ export interface FileRoutesById {
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/(public)/': typeof publicIndexRoute
   '/(public)/blog/$slug': typeof publicBlogSlugRoute
+  '/_auth/projects/$projectId': typeof AuthProjectsProjectIdRoute
   '/(public)/blog/': typeof publicBlogIndexRoute
+  '/_auth/projects/': typeof AuthProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -167,7 +185,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/accept-invitation/$invitationId'
     | '/blog/$slug'
+    | '/projects/$projectId'
     | '/blog/'
+    | '/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -183,7 +203,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/accept-invitation/$invitationId'
     | '/blog/$slug'
+    | '/projects/$projectId'
     | '/blog'
+    | '/projects'
   id:
     | '__root__'
     | '/_auth'
@@ -200,7 +222,9 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/(public)/'
     | '/(public)/blog/$slug'
+    | '/_auth/projects/$projectId'
     | '/(public)/blog/'
+    | '/_auth/projects/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -309,12 +333,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof publicAboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_auth/projects/': {
+      id: '/_auth/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof AuthProjectsIndexRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/(public)/blog/': {
       id: '/(public)/blog/'
       path: '/blog'
       fullPath: '/blog/'
       preLoaderRoute: typeof publicBlogIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_auth/projects/$projectId': {
+      id: '/_auth/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AuthProjectsProjectIdRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/(public)/blog/$slug': {
       id: '/(public)/blog/$slug'
@@ -332,6 +370,8 @@ interface AuthRouteChildren {
   AuthBillingRoute: typeof AuthBillingRoute
   AuthDashboardRoute: typeof AuthDashboardRoute
   AuthSettingsRoute: typeof AuthSettingsRoute
+  AuthProjectsProjectIdRoute: typeof AuthProjectsProjectIdRoute
+  AuthProjectsIndexRoute: typeof AuthProjectsIndexRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
@@ -340,6 +380,8 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthBillingRoute: AuthBillingRoute,
   AuthDashboardRoute: AuthDashboardRoute,
   AuthSettingsRoute: AuthSettingsRoute,
+  AuthProjectsProjectIdRoute: AuthProjectsProjectIdRoute,
+  AuthProjectsIndexRoute: AuthProjectsIndexRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

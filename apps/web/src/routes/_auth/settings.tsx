@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_auth/settings")({
   component: SettingsPage,
   head: () =>
     buildSeoHead({
-      title: "Settings | Turborepo Boilerplate",
+      title: "Settings | Zapx",
       description: "Manage your account and organization settings",
       path: "/settings",
       noIndex: true,

@@ -1,4 +1,3 @@
-import { checkout, polar, portal } from "@polar-sh/better-auth";
 import { db } from "@turborepo-boilerplate/db";
 import * as schema from "@turborepo-boilerplate/db/schema/auth";
 import {
@@ -18,7 +17,6 @@ import {
 } from "better-auth/plugins";
 import { APP_NAME, SYSTEM_ADMIN_EMAIL, SYSTEM_ADMIN_ID } from "./constant";
 import { env } from "./env";
-import { polarClient } from "./lib/payments";
 
 export * from "./permissions";
 
@@ -93,31 +91,31 @@ export const auth = betterAuth({
         });
       },
     }),
-    polar({
-      client: polarClient,
-      createCustomerOnSignUp: true,
-      enableCustomerPortal: true,
-      use: [
-        checkout({
-          products: [
-            {
-              productId: env.POLAR_PRO_PRODUCT_ID,
-              slug: env.POLAR_PRO_SLUG, // pro
-            },
-          ],
-          successUrl: env.POLAR_SUCCESS_URL,
-          authenticatedUsersOnly: true,
-        }),
-        portal(),
-        // usage(),
-        // webhooks({
-        //   secret: env.POLAR_WEBHOOK_SECRET!,
-        //   onCustomerStateChanged: async (payload) => {console.log('Polar webhook | onCustomerStateChanged : ', payload)}, // Triggered when anything regarding a customer changes
-        //   onOrderPaid: async (payload) => {console.log('Polar webhook | onOrderPaid : ', payload)}, // Triggered when an order was paid (purchase, subscription renewal, etc.)
-        //   onPayload: async (payload) => {console.log('Polar webhook | onPayload : ', payload)} // Catch-all for all events
-        // })
-      ],
-    }),
+    // polar({
+    //   client: polarClient,
+    //   createCustomerOnSignUp: true,
+    //   enableCustomerPortal: true,
+    //   use: [
+    //     checkout({
+    //       products: [
+    //         {
+    //           productId: env.POLAR_PRO_PRODUCT_ID,
+    //           slug: env.POLAR_PRO_SLUG, // pro
+    //         },
+    //       ],
+    //       successUrl: env.POLAR_SUCCESS_URL,
+    //       authenticatedUsersOnly: true,
+    //     }),
+    //     portal(),
+    //     // usage(),
+    //     // webhooks({
+    //     //   secret: env.POLAR_WEBHOOK_SECRET!,
+    //     //   onCustomerStateChanged: async (payload) => {console.log('Polar webhook | onCustomerStateChanged : ', payload)}, // Triggered when anything regarding a customer changes
+    //     //   onOrderPaid: async (payload) => {console.log('Polar webhook | onOrderPaid : ', payload)}, // Triggered when an order was paid (purchase, subscription renewal, etc.)
+    //     //   onPayload: async (payload) => {console.log('Polar webhook | onPayload : ', payload)} // Catch-all for all events
+    //     // })
+    //   ],
+    // }),
     multiSession({
       maximumSessions: 2,
     }),
