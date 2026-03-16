@@ -8,7 +8,6 @@ import {
   HowItWorks,
   Infrastructure,
 } from "@/components/landing/sections";
-import { Separator } from "@/components/ui/separator";
 import { buildCanonicalUrl, buildSeoHead, seoConstants } from "@/lib/seo";
 
 const LANDING_KEYWORDS = [
@@ -62,13 +61,9 @@ function Landing() {
       <Nav />
       <main>
         <Hero />
-        <Separator />
         <HowItWorks />
-        <Separator />
         <BuiltForMachines />
-        <Separator />
         <Infrastructure />
-        <Separator />
         <GetStarted />
       </main>
       <Footer />
