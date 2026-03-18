@@ -1,25 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { format } from "date-fns";
 import {
-  ArrowLeft,
-  Calendar,
-  Clock,
-  MoreHorizontal,
+  ArrowLeft, MoreHorizontal,
   Pencil,
-  Trash2,
+  Plus,
+  Trash2
 } from "lucide-react";
 import { useState } from "react";
 import Loader from "@/components/loader";
+import { ApiEndpointsTable } from "@/components/projects/api-endpoints-table";
+import { ApiUploadDialog } from "@/components/projects/api-upload-dialog";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { ProjectDialog } from "@/components/projects/project-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,9 +49,18 @@ function ProjectDetailPage() {
   const { data: project, isLoading } = trpc.project.getById.useQuery({
     id: projectId,
   });
+  const { data: apis, isLoading: isApisLoading } = trpc.api.listByProject.useQuery(
+    {
+      projectId,
+    },
+    {
+      enabled: !!project,
+    }
+  );
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const deleteMutation = trpc.project.delete.useMutation({
     onSuccess: () => {
@@ -140,67 +141,67 @@ function ProjectDetailPage() {
 
       <Separator />
 
-      {/* Project metadata */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card size="sm">
-          <CardHeader>
-            <CardDescription className="flex items-center gap-1.5">
-              <Calendar className="size-3.5" />
-              Created
-            </CardDescription>
-            <CardTitle className="text-sm font-medium">
-              {format(new Date(project.createdAt), "MMM d, yyyy")}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card size="sm">
-          <CardHeader>
-            <CardDescription className="flex items-center gap-1.5">
-              <Clock className="size-3.5" />
-              Last Updated
-            </CardDescription>
-            <CardTitle className="text-sm font-medium">
-              {format(new Date(project.updatedAt), "MMM d, yyyy 'at' h:mm a")}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* APIs section — placeholder for Phase 1.2 */}
+      {/* APIs section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">APIs</h2>
+          <div>
+            <h2 className="text-lg font-semibold">APIs & Endpoint Pricing</h2>
+            <p className="text-muted-foreground text-sm">
+              Import an OpenAPI spec and assign a USDC price to each endpoint.
+            </p>
+          </div>
+          <Button onClick={() => setUploadOpen(true)} className="gap-1.5">
+            <Plus className="size-4" />
+            Upload OpenAPI Spec
+          </Button>
         </div>
-        <Empty className="min-h-[200px] border">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="size-4"
-              >
-                <path d="M4 12h16" />
-                <path d="M4 6h16" />
-                <path d="M4 18h16" />
-              </svg>
-            </EmptyMedia>
-            <EmptyTitle>No APIs registered</EmptyTitle>
-            <EmptyDescription>
-              Upload an OpenAPI spec to register your first API in this project.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button variant="outline" disabled>
-              Upload OpenAPI Spec (coming soon)
-            </Button>
-          </EmptyContent>
-        </Empty>
+        {isApisLoading ? (
+          <Loader />
+        ) : apis && apis.length > 0 ? (
+          <div className="space-y-4">
+            {apis.map((api) => (
+              <ApiEndpointsTable key={api.id} api={api} projectId={projectId} />
+            ))}
+          </div>
+        ) : (
+          <Empty className="min-h-[200px] border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="size-4"
+                >
+                  <path d="M4 12h16" />
+                  <path d="M4 6h16" />
+                  <path d="M4 18h16" />
+                </svg>
+              </EmptyMedia>
+              <EmptyTitle>No APIs registered</EmptyTitle>
+              <EmptyDescription>
+                Upload an OpenAPI spec to register your first API and configure
+                endpoint pricing.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button variant="outline" onClick={() => setUploadOpen(true)}>
+                Upload OpenAPI Spec
+              </Button>
+            </EmptyContent>
+          </Empty>
+        )}
       </div>
+
+      <ApiUploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        projectId={projectId}
+      />
 
       {/* Edit dialog */}
       <ProjectDialog

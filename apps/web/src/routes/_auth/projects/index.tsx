@@ -69,10 +69,7 @@ function ProjectsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground mt-1">
-            Create projects to organize and monetize your APIs.
-          </p>
+          <h1 className="text-2xl font-semibold">Projects</h1>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="gap-1.5">
           <Plus className="size-4" />
@@ -157,8 +154,8 @@ function ProjectCard({
     id: string;
     name: string;
     description: string | null;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: string;
+    updatedAt: string;
   };
   onEdit: () => void;
   onDelete: () => void;

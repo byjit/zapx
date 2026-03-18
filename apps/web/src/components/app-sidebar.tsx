@@ -2,12 +2,9 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ChevronsUpDown,
   CreditCard,
-  FolderKanban,
-  LayoutDashboard,
+  FolderClosed, LayoutDashboard,
   LogOut,
-  Settings,
-  Shield,
-  User,
+  Settings, User
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -43,7 +40,7 @@ const mainItems = [
   {
     title: "Projects",
     url: "/projects",
-    icon: FolderKanban,
+    icon: FolderClosed,
   },
 ];
 
@@ -82,12 +79,9 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
               <Link to="/">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Logo className="size-4" showText={false} />
-                </div>
+                <Logo className="size-4" showText={false} />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Zapx</span>
-                  <span className="truncate text-xs">API Gateway</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -116,40 +110,28 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {settingsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={router.location.pathname.startsWith(item.url)}
-                    tooltip={item.title}
-                  >
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              <SidebarMenuItem>
+      </SidebarContent>
+      <SidebarGroup>
+        <SidebarGroupLabel>Account</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {settingsItems.map((item) => (
+              <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   asChild
-                  isActive={router.location.pathname === "/admin"}
-                  tooltip="Admin"
+                  isActive={router.location.pathname.startsWith(item.url)}
+                  tooltip={item.title}
                 >
-                  <Link to="/admin">
-                    <Shield />
-                    <span>Admin</span>
+                  <Link to={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>

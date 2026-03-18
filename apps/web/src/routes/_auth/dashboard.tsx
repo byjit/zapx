@@ -35,12 +35,9 @@ function DashboardComponent() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-2xl font-semibold">
           Welcome back, {session.data.user?.name?.split(" ")[0] ?? "there"}
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Here's an overview of your API monetization platform.
-        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

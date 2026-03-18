@@ -77,6 +77,10 @@ turborepo-boilerplate/
 - `pnpm db:sync`: Generate and apply schema migrations to the database
 - `pnpm email-preview`: Preview emails
 
+## THINGS TO AVOID
+
+- Never run 'pnpm db:sync' command. Make the schema change -> run 'pnpm db:generate' and then let the user decide whether to apply the changes or not.
+
 ## NOTES
 
 - When db schema is changed, run `pnpm db:sync` to sync the changes to the database.
