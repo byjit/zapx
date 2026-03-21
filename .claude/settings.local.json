@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:)",
+      "Bash(find:)",
+      "Bash(curl:)",
+      "Bash(grep -r \"payment\\\\|gateway\\\\|ledger\\\\|monetize\" /Users/prasanjitdutta/Desktop/projects2/zapx/packages --include=*.ts --include=*.tsx)"
+    ]
+  }
+}

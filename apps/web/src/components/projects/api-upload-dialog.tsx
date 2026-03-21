@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/utils/trpc";
 
 interface ApiUploadDialogProps {
@@ -101,7 +100,7 @@ export function ApiUploadDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="sm:max-w-2xl">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -123,10 +122,10 @@ export function ApiUploadDialog({
               </Label>
               <Input
                 id="api-name"
+                maxLength={120}
+                onChange={(event) => setName(event.target.value)}
                 placeholder="Defaults to the spec title"
                 value={name}
-                onChange={(event) => setName(event.target.value)}
-                maxLength={120}
               />
             </div>
 
@@ -139,20 +138,20 @@ export function ApiUploadDialog({
               </Label>
               <Input
                 id="api-base-url"
+                maxLength={500}
+                onChange={(event) => setBaseUrl(event.target.value)}
                 placeholder="https://api.example.com"
                 value={baseUrl}
-                onChange={(event) => setBaseUrl(event.target.value)}
-                maxLength={500}
               />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="openapi-file">OpenAPI File</Label>
               <Input
-                id="openapi-file"
-                type="file"
                 accept={acceptedSpecTypes}
+                id="openapi-file"
                 onChange={handleFileUpload}
+                type="file"
               />
               <p className="text-muted-foreground text-xs">
                 {selectedFileName
@@ -170,46 +169,35 @@ export function ApiUploadDialog({
               </Label>
               <Input
                 id="default-price"
+                onChange={(event) => setDefaultPriceUsdc(event.target.value)}
                 placeholder="$0.001"
                 value={defaultPriceUsdc}
-                onChange={(event) => setDefaultPriceUsdc(event.target.value)}
               />
               <p className="text-muted-foreground text-xs">
-                If provided, every parsed endpoint starts with this price and can
-                still be edited later.
+                If provided, every parsed endpoint starts with this price and
+                can still be edited later.
               </p>
-              {defaultPriceUsdc && !endpointPricePattern.test(defaultPriceUsdc) ? (
+              {defaultPriceUsdc &&
+              !endpointPricePattern.test(defaultPriceUsdc) ? (
                 <p className="text-destructive text-xs">
                   Use a value like $0.001
                 </p>
               ) : null}
             </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="openapi-spec">OpenAPI Spec</Label>
-              <Textarea
-                id="openapi-spec"
-                placeholder="Paste your OpenAPI JSON or YAML here..."
-                value={openapiSpec}
-                onChange={(event) => setOpenapiSpec(event.target.value)}
-                rows={16}
-                required
-              />
-            </div>
           </div>
 
           <DialogFooter>
             <Button
+              disabled={createApiMutation.isPending}
+              onClick={() => onOpenChange(false)}
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={createApiMutation.isPending}
             >
               Cancel
             </Button>
             <Button
-              type="submit"
               disabled={createApiMutation.isPending || !openapiSpec.trim()}
+              type="submit"
             >
               {createApiMutation.isPending ? "Importing..." : "Import API"}
             </Button>

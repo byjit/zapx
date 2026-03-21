@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { OrganizationSettings } from "@/components/blocks/settings/organization-settings";
 import { UserProfileSettings } from "@/components/blocks/settings/user-profile-settings";
 import Loader from "@/components/loader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,16 +18,11 @@ export const Route = createFileRoute("/_auth/settings")({
 });
 
 function SettingsPage() {
-  const { data: session, isPending: isSessionLoading } =
-    authClient.useSession();
-  const { data: activeOrg, isPending: isActiveOrgLoading } =
-    authClient.useActiveOrganization();
-  const { data: organizations, isPending: isOrgsLoading } =
-    authClient.useListOrganizations();
+  const { data: session, isPending: isSessionLoading } = authClient.useSession();
 
   const [activeTab, setActiveTab] = useState("user");
 
-  if (isSessionLoading || isActiveOrgLoading || isOrgsLoading) {
+  if (isSessionLoading) {
     return <Loader />;
   }
 
@@ -55,19 +49,10 @@ function SettingsPage() {
       >
         <TabsList>
           <TabsTrigger value="user">User Profile</TabsTrigger>
-          <TabsTrigger value="organization">Organization</TabsTrigger>
         </TabsList>
 
         <TabsContent className="space-y-6" value="user">
           <UserProfileSettings session={session} />
-        </TabsContent>
-
-        <TabsContent className="space-y-6" value="organization">
-          <OrganizationSettings
-            activeOrg={activeOrg}
-            currentUserId={session.user.id}
-            organizations={organizations || []}
-          />
         </TabsContent>
       </Tabs>
     </div>
