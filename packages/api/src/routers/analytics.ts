@@ -6,6 +6,13 @@ import { and, count, eq, gte, lte, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 
+/**
+ * Usage and revenue analytics, all derived from the ledger.
+ *
+ * Naming matters here (spec §14): `totalGrossVolume` is what callers paid,
+ * `totalPlatformFees` is Zapx's cut, and `totalProviderCredits` is the
+ * provider's actual revenue — the only figure a provider should read as theirs.
+ */
 export const analyticsRouter = router({
   getSummary: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
@@ -21,7 +28,7 @@ export const analyticsRouter = router({
     const [totals] = await db
       .select({
         totalRequests: count(),
-        totalRevenue: sum(ledgerEntry.amount),
+        totalGrossVolume: sum(ledgerEntry.amount),
         totalPlatformFees: sum(ledgerEntry.platformFee),
         totalProviderCredits: sum(ledgerEntry.providerCredit),
       })
@@ -32,7 +39,7 @@ export const analyticsRouter = router({
 
     return {
       totalRequests: totals?.totalRequests ?? 0,
-      totalRevenue: totals?.totalRevenue ?? "0",
+      totalGrossVolume: totals?.totalGrossVolume ?? "0",
       totalPlatformFees: totals?.totalPlatformFees ?? "0",
       totalProviderCredits: totals?.totalProviderCredits ?? "0",
       availableBalance: balance?.availableBalance ?? "0",
@@ -62,7 +69,7 @@ export const analyticsRouter = router({
           apiId: ledgerEntry.apiId,
           apiName: providerApi.name,
           requestCount: count(),
-          totalRevenue: sum(ledgerEntry.amount),
+          totalGrossVolume: sum(ledgerEntry.amount),
           totalProviderCredits: sum(ledgerEntry.providerCredit),
         })
         .from(ledgerEntry)
@@ -101,7 +108,7 @@ export const analyticsRouter = router({
         .select({
           period: truncFn.as("period"),
           requestCount: count(),
-          totalRevenue: sum(ledgerEntry.amount),
+          totalGrossVolume: sum(ledgerEntry.amount),
           totalProviderCredits: sum(ledgerEntry.providerCredit),
           totalPlatformFees: sum(ledgerEntry.platformFee),
         })

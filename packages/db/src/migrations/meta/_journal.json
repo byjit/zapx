@@ -22,6 +22,13 @@
       "when": 1774121325027,
       "tag": "0002_wise_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785003976533,
+      "tag": "0003_glossy_nightmare",
+      "breakpoints": true
     }
   ]
 }

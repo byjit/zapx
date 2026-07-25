@@ -1,26 +1,60 @@
 import { TRPCError } from "@trpc/server";
 import {
   createProviderApiWithEndpoints,
+  deleteProviderApiForUser,
   listProviderApisByProjectForUser,
   updateEndpointPricingForUser,
+  updateProviderApiBaseUrlForUser,
 } from "@turborepo-boilerplate/db/api-registry";
 import { getProjectByIdForUser } from "@turborepo-boilerplate/db/project";
 import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 import { parseOpenApiSpec } from "../openapi";
+import { endpointPriceSchema } from "../pricing";
 import { validateBaseUrl } from "../url-validation";
 
-const endpointPriceSchema = z
-  .string()
-  .regex(/^\$(?:0|[1-9]\d*)(?:\.\d{1,6})?$/, "Price must look like $0.001");
+/**
+ * Upper bound on an uploaded spec. The Express body limit is 10 MB; this keeps a
+ * single field from consuming all of it, while staying above real-world specs.
+ */
+const MAX_OPENAPI_SPEC_LENGTH = 5_000_000;
+
+const baseUrlInputSchema = z.string().min(1).max(500);
 
 const createApiInputSchema = z.object({
   projectId: z.string().min(1),
   name: z.string().max(120).optional(),
-  baseUrl: z.string().max(500).optional(),
+  baseUrl: baseUrlInputSchema.optional(),
   defaultPriceUsdc: endpointPriceSchema.optional(),
-  openapiSpec: z.string().min(1),
+  openapiSpec: z.string().min(1).max(MAX_OPENAPI_SPEC_LENGTH),
 });
+
+/**
+ * Parses, normalizes and SSRF-checks a provider-supplied base URL.
+ * Shared by import and later edits so both apply the identical policy.
+ */
+function assertSafeBaseUrl(rawBaseUrl: string): string {
+  let baseUrl: string;
+  try {
+    baseUrl = z.url().parse(rawBaseUrl.trim());
+  } catch {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Base URL must be a valid URL",
+    });
+  }
+
+  // Edge case #7: SSRF protection — reject private/internal URLs
+  const urlCheck = validateBaseUrl(baseUrl);
+  if (!urlCheck.valid) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: urlCheck.reason || "Invalid base URL",
+    });
+  }
+
+  return baseUrl;
+}
 
 export const apiRouter = router({
   listByProject: protectedProcedure
@@ -76,16 +110,7 @@ export const apiRouter = router({
           });
         }
 
-        const validatedBaseUrl = z.url().parse(baseUrl);
-
-        // Edge case #7: SSRF protection — reject private/internal URLs
-        const urlCheck = validateBaseUrl(validatedBaseUrl);
-        if (!urlCheck.valid) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: urlCheck.reason || "Invalid base URL",
-          });
-        }
+        const validatedBaseUrl = assertSafeBaseUrl(baseUrl);
 
         return createProviderApiWithEndpoints({
           userId: ctx.session.user.id,
@@ -141,5 +166,62 @@ export const apiRouter = router({
       }
 
       return updatedEndpoint;
+    }),
+
+  /**
+   * Correct a wrong or changed upstream base URL without re-importing the spec.
+   */
+  updateBaseUrl: protectedProcedure
+    .input(
+      z.object({
+        apiId: z.string().min(1),
+        baseUrl: baseUrlInputSchema,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updatedApi = await updateProviderApiBaseUrlForUser({
+        apiId: input.apiId,
+        userId: ctx.session.user.id,
+        baseUrl: assertSafeBaseUrl(input.baseUrl),
+      });
+
+      if (!updatedApi) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "API not found",
+        });
+      }
+
+      return updatedApi;
+    }),
+
+  /**
+   * Deletes an API and its endpoints. Refused once the API has earned anything —
+   * revenue history is append-only, so ban/retire rather than delete.
+   */
+  delete: protectedProcedure
+    .input(z.object({ apiId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await deleteProviderApiForUser({
+        apiId: input.apiId,
+        userId: ctx.session.user.id,
+      });
+
+      if (result === "not-found") {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "API not found",
+        });
+      }
+
+      if (result === "has-history") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "This API has payment history and cannot be deleted — its revenue audit trail must be preserved.",
+        });
+      }
+
+      return { success: true };
     }),
 });

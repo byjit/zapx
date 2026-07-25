@@ -21,17 +21,11 @@ export const withdrawalRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const amount = Number.parseFloat(input.amount);
 
-      if (amount <= 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Amount must be positive",
-        });
-      }
-
-      // Edge case #20: Enforce minimum withdrawal amount
-      if (amount < MINIMUM_WITHDRAWAL_AMOUNT) {
+      // Edge case #20: enforce the minimum. A float comparison is exact enough
+      // against a whole-dollar threshold; the balance comparison below is not,
+      // and stays in SQL.
+      if (Number.parseFloat(input.amount) < MINIMUM_WITHDRAWAL_AMOUNT) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: `Minimum withdrawal amount is $${MINIMUM_WITHDRAWAL_AMOUNT.toFixed(2)}`,
@@ -39,22 +33,21 @@ export const withdrawalRouter = router({
       }
 
       return db.transaction(async (tx) => {
-        // Edge case #3 & #15: SELECT ... FOR UPDATE prevents concurrent
-        // withdrawal requests from reading the same balance
+        // Edge case #3 & #15: `SELECT … FOR UPDATE` serializes concurrent
+        // withdrawal requests. The sufficiency test lives in the predicate so it
+        // runs on the exact `numeric` values and is re-evaluated after the lock
+        // is taken — comparing parsed floats in JS could clear a withdrawal a
+        // hair larger than the balance, which the database's non-negative
+        // constraint would then reject with an opaque error.
         const balanceResult = await tx.execute(sql`
-          SELECT user_id, available_balance
+          SELECT user_id
           FROM user_balance
           WHERE user_id = ${userId}
+            AND available_balance >= ${input.amount}::numeric(20,6)
           FOR UPDATE
         `);
-        const balance = balanceResult.rows[0] as
-          | {
-              user_id: string;
-              available_balance: string;
-            }
-          | undefined;
 
-        if (!balance || Number.parseFloat(balance.available_balance) < amount) {
+        if (balanceResult.rows.length === 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Insufficient balance",

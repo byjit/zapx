@@ -133,35 +133,53 @@ export const createServer = (): Express => {
   // Apply logger middleware first to log all requests
   app.use(loggerMiddleware);
 
+  // Paid API traffic comes from arbitrary origins and never carries a Zapx
+  // session, so the gateway gets its own wildcard, credential-free CORS policy.
+  // The dashboard policy below cannot serve it: with `CORS_ORIGIN` unset the
+  // `cors` package emits no `Access-Control-*` headers at all, so a browser x402
+  // client could never read the `Payment-Required` challenge it needs.
+  const gatewayCors = cors({
+    origin: "*",
+    methods: ["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Accept",
+      "X-Correlation-Id",
+      "X-Request-Id",
+      "Payment-Signature",
+      "X-Payment",
+    ],
+    exposedHeaders: [
+      "X-Correlation-Id",
+      "X-Request-Id",
+      "Payment-Required",
+      "Payment-Response",
+      "X-Payment-Response",
+    ],
+    credentials: false,
+  });
+
+  // Edge case #11: Mount gateway BEFORE body parsers so it can handle
+  // raw binary bodies (multipart, images, etc.) without re-serialization
+  app.use("/gateway", gatewayCors, gatewayRouter);
+
   app.use(
     cors({
       // Keep browser access explicit. Same-origin and server-to-server requests
       // do not need CORS headers, while cross-origin auth flows should use the
       // configured frontend origin.
       origin: corsOrigin,
-      methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
+      methods: ["GET", "HEAD", "OPTIONS", "POST", "PATCH", "PUT", "DELETE"],
       allowedHeaders: [
         "Content-Type",
         "Authorization",
         "X-Correlation-Id",
         "X-Request-Id",
-        "Payment-Signature",
-        "X-Payment",
       ],
-      exposedHeaders: [
-        "X-Correlation-Id",
-        "X-Request-Id",
-        "Payment-Required",
-        "Payment-Response",
-        "X-Payment-Response",
-      ],
+      exposedHeaders: ["X-Correlation-Id", "X-Request-Id"],
       credentials: true,
     })
   );
-
-  // Edge case #11: Mount gateway BEFORE body parsers so it can handle
-  // raw binary bodies (multipart, images, etc.) without re-serialization
-  app.use("/gateway", gatewayRouter);
 
   // Request size limits
   app.use(

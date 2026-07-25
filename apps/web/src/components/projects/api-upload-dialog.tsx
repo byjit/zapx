@@ -1,3 +1,7 @@
+import {
+  ENDPOINT_PRICE_HINT,
+  isValidEndpointPrice,
+} from "@turborepo-boilerplate/api/pricing";
 import type { ChangeEvent, FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -21,7 +25,6 @@ interface ApiUploadDialogProps {
 }
 
 const acceptedSpecTypes = ".json,.yaml,.yml,application/json,text/yaml";
-const endpointPricePattern = /^\$(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
 
 export function ApiUploadDialog({
   open,
@@ -84,9 +87,9 @@ export function ApiUploadDialog({
 
     if (
       defaultPriceUsdc.trim() &&
-      !endpointPricePattern.test(defaultPriceUsdc.trim())
+      !isValidEndpointPrice(defaultPriceUsdc.trim())
     ) {
-      toast.error("Default price must look like $0.001");
+      toast.error(ENDPOINT_PRICE_HINT);
       return;
     }
 
@@ -177,10 +180,9 @@ export function ApiUploadDialog({
                 If provided, every parsed endpoint starts with this price and
                 can still be edited later.
               </p>
-              {defaultPriceUsdc &&
-              !endpointPricePattern.test(defaultPriceUsdc) ? (
+              {defaultPriceUsdc && !isValidEndpointPrice(defaultPriceUsdc) ? (
                 <p className="text-destructive text-xs">
-                  Use a value like $0.001
+                  {ENDPOINT_PRICE_HINT}
                 </p>
               ) : null}
             </div>

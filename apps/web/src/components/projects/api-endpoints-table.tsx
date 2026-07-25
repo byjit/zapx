@@ -1,8 +1,13 @@
 import type { RouterOutputs } from "@turborepo-boilerplate/api";
+import {
+  ENDPOINT_PRICE_HINT,
+  isValidEndpointPrice,
+} from "@turborepo-boilerplate/api/pricing";
 import { format } from "date-fns";
 import { Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { CopyButton } from "@/components/copy-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { env } from "@/env";
 import { trpc } from "@/utils/trpc";
 
 type ProjectApi = RouterOutputs["api"]["listByProject"][number];
@@ -30,8 +36,6 @@ interface ApiEndpointsTableProps {
   api: ProjectApi;
   projectId: string;
 }
-
-const endpointPricePattern = /^\$(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
 
 const methodVariantMap: Record<
   string,
@@ -43,6 +47,10 @@ const methodVariantMap: Record<
   PATCH: "outline",
   DELETE: "destructive",
 };
+
+/** An endpoint with no price is rejected by the gateway with a 400. */
+const isUnpriced = (endpoint: ProjectEndpoint) =>
+  !endpoint.priceUsdc || endpoint.priceUsdc.trim().length === 0;
 
 export function ApiEndpointsTable({ api, projectId }: ApiEndpointsTableProps) {
   const utils = trpc.useUtils();
@@ -73,13 +81,16 @@ export function ApiEndpointsTable({ api, projectId }: ApiEndpointsTableProps) {
     },
   });
 
+  // The routing key callers must use: /gateway/:apiId/<endpoint path>.
+  const gatewayBaseUrl = `${env.SERVER_URL}/gateway/${api.id}`;
+
   const endpointRows = useMemo(
     () =>
       api.endpoints.map((endpoint) => {
         const draftPrice = pricesByEndpointId[endpoint.id] ?? "";
         const hasChanged = draftPrice !== (endpoint.priceUsdc ?? "");
         const isValidPrice =
-          draftPrice.length > 0 && endpointPricePattern.test(draftPrice);
+          draftPrice.length > 0 && isValidEndpointPrice(draftPrice);
 
         return {
           endpoint,
@@ -91,9 +102,11 @@ export function ApiEndpointsTable({ api, projectId }: ApiEndpointsTableProps) {
     [api.endpoints, pricesByEndpointId]
   );
 
+  const unpricedCount = api.endpoints.filter(isUnpriced).length;
+
   const saveEndpointPrice = (endpoint: ProjectEndpoint, draftPrice: string) => {
-    if (!endpointPricePattern.test(draftPrice)) {
-      toast.error("Price must look like $0.001");
+    if (!isValidEndpointPrice(draftPrice)) {
+      toast.error(ENDPOINT_PRICE_HINT);
       return;
     }
 
@@ -109,7 +122,15 @@ export function ApiEndpointsTable({ api, projectId }: ApiEndpointsTableProps) {
       <CardHeader>
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div className="space-y-1">
-            <CardTitle>{api.name}</CardTitle>
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              {api.name}
+              {unpricedCount > 0 && (
+                <Badge variant="destructive">
+                  {unpricedCount} unpriced{" "}
+                  {unpricedCount === 1 ? "endpoint" : "endpoints"}
+                </Badge>
+              )}
+            </CardTitle>
             <CardDescription>{api.baseUrl}</CardDescription>
           </div>
           <div className="text-muted-foreground text-xs">
@@ -117,9 +138,30 @@ export function ApiEndpointsTable({ api, projectId }: ApiEndpointsTableProps) {
             {format(new Date(api.createdAt), "MMM d, yyyy 'at' h:mm a")}
           </div>
         </div>
+
+        {/* P2-8: the provider cannot publish their API without this URL. */}
+        <div className="flex flex-col gap-1 rounded-md border bg-muted/40 p-3">
+          <span className="font-medium text-xs">Gateway base URL</span>
+          <div className="flex items-start gap-1">
+            <code className="break-all font-mono text-xs">
+              {gatewayBaseUrl}
+            </code>
+            <CopyButton
+              label="Gateway base URL copied"
+              value={gatewayBaseUrl}
+            />
+          </div>
+          <span className="text-muted-foreground text-xs">
+            Share this prefix with callers — append an endpoint path below and
+            the gateway handles payment before proxying to {api.baseUrl}.
+          </span>
+        </div>
+
         <CardDescription>
           Configure a per-endpoint USDC price for each route parsed from the
           uploaded OpenAPI spec.
+          {unpricedCount > 0 &&
+            " Unpriced endpoints are rejected by the gateway with a 400 until a price is set."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -146,7 +188,13 @@ export function ApiEndpointsTable({ api, projectId }: ApiEndpointsTableProps) {
                     </Badge>
                   </TableCell>
                   <TableCell className="max-w-[280px] whitespace-normal font-mono text-xs">
-                    {endpoint.path}
+                    <span className="flex items-start gap-1">
+                      {endpoint.path}
+                      <CopyButton
+                        label="Full endpoint URL copied"
+                        value={`${gatewayBaseUrl}${endpoint.path}`}
+                      />
+                    </span>
                   </TableCell>
                   <TableCell className="max-w-[320px] whitespace-normal text-muted-foreground">
                     {endpoint.summary ||
@@ -167,9 +215,12 @@ export function ApiEndpointsTable({ api, projectId }: ApiEndpointsTableProps) {
                         placeholder="$0.001"
                         className="max-w-[140px]"
                       />
+                      {isUnpriced(endpoint) && (
+                        <Badge variant="destructive">Unpriced</Badge>
+                      )}
                       {draftPrice && !isValidPrice ? (
                         <p className="text-destructive text-xs">
-                          Use a value like $0.001
+                          {ENDPOINT_PRICE_HINT}
                         </p>
                       ) : null}
                     </div>
