@@ -4,7 +4,10 @@
       "Bash(grep:)",
       "Bash(find:)",
       "Bash(curl:)",
-      "Bash(grep -r \"payment\\\\|gateway\\\\|ledger\\\\|monetize\" /Users/prasanjitdutta/Desktop/projects2/zapx/packages --include=*.ts --include=*.tsx)"
+      "Bash(grep -r \"payment\\\\|gateway\\\\|ledger\\\\|monetize\" /Users/prasanjitdutta/Desktop/projects2/zapx/packages --include=*.ts --include=*.tsx)",
+      "Bash(pnpm:*)",
+      "Bash(grep -rn execute /Users/prasanjitdutta/Desktop/projects2/zapx/node_modules/.pnpm/drizzle-orm@0.44.2_@neondatabase+serverless@0.10.4/node_modules/drizzle-orm/session*.d.ts)",
+      "Bash(git status:*)"
     ]
   }
 }

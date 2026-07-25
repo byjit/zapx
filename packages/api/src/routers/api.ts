@@ -8,6 +8,7 @@ import { getProjectByIdForUser } from "@turborepo-boilerplate/db/project";
 import { z } from "zod";
 import { parseOpenApiSpec } from "../openapi";
 import { protectedProcedure, router } from "../index";
+import { validateBaseUrl } from "../url-validation";
 
 const endpointPriceSchema = z
   .string()
@@ -76,6 +77,15 @@ export const apiRouter = router({
         }
 
         const validatedBaseUrl = z.url().parse(baseUrl);
+
+        // Edge case #7: SSRF protection — reject private/internal URLs
+        const urlCheck = validateBaseUrl(validatedBaseUrl);
+        if (!urlCheck.valid) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: urlCheck.reason || "Invalid base URL",
+          });
+        }
 
         return createProviderApiWithEndpoints({
           userId: ctx.session.user.id,

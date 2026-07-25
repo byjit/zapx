@@ -24,6 +24,7 @@ import {
   generateOpenApiDocument,
 } from "trpc-to-openapi";
 import { loggerMiddleware } from "./middleware/logger";
+import { gatewayRouter } from "./routes/gateway";
 import { v1Router } from "./routes/v1";
 import { HttpError } from "./utils/http-error";
 import {
@@ -41,6 +42,12 @@ const RATE_LIMIT_DURATION_SECONDS = 1;
 const getRateLimitKey = (req: Request) => {
   if (req.path.startsWith("/api/auth")) {
     return `auth:${req.ip ?? "unknown"}`;
+  }
+
+  // Edge case #22: Gateway gets its own rate limit key so high-volume
+  // API consumers don't crowd out dashboard users
+  if (req.path.startsWith("/gateway")) {
+    return `gateway:${req.ip ?? "unknown"}`;
   }
 
   if (req.path.startsWith("/api") || req.path.startsWith("/trpc")) {
@@ -139,11 +146,23 @@ export const createServer = (): Express => {
         "Authorization",
         "X-Correlation-Id",
         "X-Request-Id",
+        "Payment-Signature",
+        "X-Payment",
       ],
-      exposedHeaders: ["X-Correlation-Id", "X-Request-Id"],
+      exposedHeaders: [
+        "X-Correlation-Id",
+        "X-Request-Id",
+        "Payment-Required",
+        "Payment-Response",
+        "X-Payment-Response",
+      ],
       credentials: true,
     })
   );
+
+  // Edge case #11: Mount gateway BEFORE body parsers so it can handle
+  // raw binary bodies (multipart, images, etc.) without re-serialization
+  app.use("/gateway", gatewayRouter);
 
   // Request size limits
   app.use(

@@ -359,9 +359,9 @@ apps/
 
 ## MVP Completion Checklist
 
-- [ ] Phase 0: Ledger/payment schema + migration
-- [ ] Phase 1: x402 packages installed, facilitator integration, idempotency, ledger service
-- [ ] Phase 2: Gateway routes, x402 middleware, proxy, onAfterSettle hook
-- [ ] Phase 3: Balance queries, analytics, dashboard UI
-- [ ] Phase 4: Withdrawal request + admin approval flow
+- [x] Phase 0: Ledger/payment schema + migration
+- [x] Phase 1: x402 packages installed, facilitator integration, idempotency, ledger service
+- [x] Phase 2: Gateway routes, x402 middleware, proxy, onAfterSettle hook
+- [x] Phase 3: Balance queries, analytics (backend only — dashboard UI pending)
+- [x] Phase 4: Withdrawal request + admin approval flow
 - [ ] End-to-end test: client → 402 → pay → gateway → proxy → response → ledger credit

@@ -15,6 +15,13 @@
       "when": 1773674332870,
       "tag": "0001_lovely_trauma",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774121325027,
+      "tag": "0002_wise_namorita",
+      "breakpoints": true
     }
   ]
 }

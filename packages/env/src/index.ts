@@ -37,6 +37,14 @@ const envSchema = z.object({
     .positive()
     .optional()
     .default(10),
+  // x402 Payment Gateway
+  FACILITATOR_URL: z
+    .string()
+    .url()
+    .default("https://x402.org/facilitator"),
+  PAY_TO: z.string().optional(),
+  PLATFORM_FEE_PERCENT: z.coerce.number().min(0).max(100).default(10),
+  X402_NETWORK: z.string().default("eip155:84532"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
