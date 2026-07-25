@@ -81,7 +81,7 @@ export function OrganizationMembers({
       });
       toast.success("Role updated");
       fetchMembers();
-    } catch (_e) {
+    } catch {
       toast.error("Failed to update role");
     }
   };
@@ -93,7 +93,7 @@ export function OrganizationMembers({
       });
       toast.success("Member removed");
       fetchMembers();
-    } catch (_e) {
+    } catch {
       toast.error("Failed to remove member");
     }
   };

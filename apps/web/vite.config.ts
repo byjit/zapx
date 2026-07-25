@@ -14,7 +14,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      // `import.meta.dirname` is the ESM equivalent of `__dirname`, which is
+      // not defined in this package ("type": "module").
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
 });

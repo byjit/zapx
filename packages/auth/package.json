@@ -21,9 +21,9 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "^1.5.5",
+    "@better-auth/drizzle-adapter": "^1.6.25",
     "@polar-sh/better-auth": "catalog:",
-    "@polar-sh/sdk": "^0.46.4",
+    "@polar-sh/sdk": "^0.49.0",
     "@turborepo-boilerplate/db": "workspace:*",
     "@turborepo-boilerplate/services": "workspace:*",
     "better-auth": "catalog:",

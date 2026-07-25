@@ -84,16 +84,23 @@ export const parseOpenApiSpec = (specText: string): ParsedOpenApiSpec => {
         method: method.toUpperCase(),
         path,
         operationId:
-          typeof operation.operationId === "string" ? operation.operationId : null,
-        summary: typeof operation.summary === "string" ? operation.summary : null,
+          typeof operation.operationId === "string"
+            ? operation.operationId
+            : null,
+        summary:
+          typeof operation.summary === "string" ? operation.summary : null,
         description:
-          typeof operation.description === "string" ? operation.description : null,
+          typeof operation.description === "string"
+            ? operation.description
+            : null,
       });
     }
   }
 
   if (endpoints.length === 0) {
-    throw new Error("No supported HTTP endpoints were found in the OpenAPI spec");
+    throw new Error(
+      "No supported HTTP endpoints were found in the OpenAPI spec"
+    );
   }
 
   const apiName =

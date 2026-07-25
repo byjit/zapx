@@ -25,7 +25,10 @@ const BLOCKED_HOSTNAMES = new Set([
   "metadata.google.com",
 ]);
 
-export function validateBaseUrl(url: string): { valid: boolean; reason?: string } {
+export function validateBaseUrl(url: string): {
+  valid: boolean;
+  reason?: string;
+} {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -42,7 +45,10 @@ export function validateBaseUrl(url: string): { valid: boolean; reason?: string 
 
   // Block known dangerous hostnames
   if (BLOCKED_HOSTNAMES.has(hostname)) {
-    return { valid: false, reason: "URL must not point to localhost or metadata services" };
+    return {
+      valid: false,
+      reason: "URL must not point to localhost or metadata services",
+    };
   }
 
   // Block IPv6 loopback
@@ -53,7 +59,10 @@ export function validateBaseUrl(url: string): { valid: boolean; reason?: string 
   // Check if hostname is a raw IP address
   for (const pattern of PRIVATE_IP_PATTERNS) {
     if (pattern.test(hostname)) {
-      return { valid: false, reason: "URL must not point to private or internal IP addresses" };
+      return {
+        valid: false,
+        reason: "URL must not point to private or internal IP addresses",
+      };
     }
   }
 

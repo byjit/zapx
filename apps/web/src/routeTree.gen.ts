@@ -11,21 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as publicIndexRouteImport } from './routes/(public)/index'
-import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
-import { Route as AuthSettingsRouteImport } from './routes/_auth/settings'
-import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
-import { Route as AuthBillingRouteImport } from './routes/_auth/billing'
-import { Route as AuthAiRouteImport } from './routes/_auth/ai'
-import { Route as AuthAdminRouteImport } from './routes/_auth/admin'
-import { Route as publicTermsRouteImport } from './routes/(public)/terms'
-import { Route as publicSuccessRouteImport } from './routes/(public)/success'
-import { Route as publicPrivacyRouteImport } from './routes/(public)/privacy'
-import { Route as publicLoginRouteImport } from './routes/(public)/login'
 import { Route as publicAboutRouteImport } from './routes/(public)/about'
-import { Route as AuthProjectsIndexRouteImport } from './routes/_auth/projects/index'
+import { Route as publicLoginRouteImport } from './routes/(public)/login'
+import { Route as publicPrivacyRouteImport } from './routes/(public)/privacy'
+import { Route as publicSuccessRouteImport } from './routes/(public)/success'
+import { Route as publicTermsRouteImport } from './routes/(public)/terms'
+import { Route as AuthAdminRouteImport } from './routes/_auth/admin'
+import { Route as AuthAiRouteImport } from './routes/_auth/ai'
+import { Route as AuthBillingRouteImport } from './routes/_auth/billing'
+import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
+import { Route as AuthSettingsRouteImport } from './routes/_auth/settings'
+import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as publicBlogIndexRouteImport } from './routes/(public)/blog/index'
-import { Route as AuthProjectsProjectIdRouteImport } from './routes/_auth/projects/$projectId'
 import { Route as publicBlogSlugRouteImport } from './routes/(public)/blog/$slug'
+import { Route as AuthProjectsIndexRouteImport } from './routes/_auth/projects/index'
+import { Route as AuthProjectsProjectIdRouteImport } from './routes/_auth/projects/$projectId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
@@ -36,50 +36,9 @@ const publicIndexRoute = publicIndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AcceptInvitationInvitationIdRoute =
-  AcceptInvitationInvitationIdRouteImport.update({
-    id: '/accept-invitation/$invitationId',
-    path: '/accept-invitation/$invitationId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthSettingsRoute = AuthSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthDashboardRoute = AuthDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthBillingRoute = AuthBillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthAiRoute = AuthAiRouteImport.update({
-  id: '/ai',
-  path: '/ai',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthAdminRoute = AuthAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthRoute,
-} as any)
-const publicTermsRoute = publicTermsRouteImport.update({
-  id: '/(public)/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const publicSuccessRoute = publicSuccessRouteImport.update({
-  id: '/(public)/success',
-  path: '/success',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const publicPrivacyRoute = publicPrivacyRouteImport.update({
-  id: '/(public)/privacy',
-  path: '/privacy',
+const publicAboutRoute = publicAboutRouteImport.update({
+  id: '/(public)/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const publicLoginRoute = publicLoginRouteImport.update({
@@ -87,9 +46,60 @@ const publicLoginRoute = publicLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const publicAboutRoute = publicAboutRouteImport.update({
-  id: '/(public)/about',
-  path: '/about',
+const publicPrivacyRoute = publicPrivacyRouteImport.update({
+  id: '/(public)/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const publicSuccessRoute = publicSuccessRouteImport.update({
+  id: '/(public)/success',
+  path: '/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const publicTermsRoute = publicTermsRouteImport.update({
+  id: '/(public)/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthAdminRoute = AuthAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthAiRoute = AuthAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthBillingRoute = AuthBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthDashboardRoute = AuthDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSettingsRoute = AuthSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AcceptInvitationInvitationIdRoute =
+  AcceptInvitationInvitationIdRouteImport.update({
+    id: '/accept-invitation/$invitationId',
+    path: '/accept-invitation/$invitationId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const publicBlogIndexRoute = publicBlogIndexRouteImport.update({
+  id: '/(public)/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const publicBlogSlugRoute = publicBlogSlugRouteImport.update({
+  id: '/(public)/blog/$slug',
+  path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthProjectsIndexRoute = AuthProjectsIndexRouteImport.update({
@@ -97,20 +107,10 @@ const AuthProjectsIndexRoute = AuthProjectsIndexRouteImport.update({
   path: '/projects/',
   getParentRoute: () => AuthRoute,
 } as any)
-const publicBlogIndexRoute = publicBlogIndexRouteImport.update({
-  id: '/(public)/blog/',
-  path: '/blog/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthProjectsProjectIdRoute = AuthProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
   getParentRoute: () => AuthRoute,
-} as any)
-const publicBlogSlugRoute = publicBlogSlugRouteImport.update({
-  id: '/(public)/blog/$slug',
-  path: '/blog/$slug',
-  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -256,67 +256,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof publicIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/accept-invitation/$invitationId': {
-      id: '/accept-invitation/$invitationId'
-      path: '/accept-invitation/$invitationId'
-      fullPath: '/accept-invitation/$invitationId'
-      preLoaderRoute: typeof AcceptInvitationInvitationIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_auth/settings': {
-      id: '/_auth/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthSettingsRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/dashboard': {
-      id: '/_auth/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthDashboardRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/billing': {
-      id: '/_auth/billing'
-      path: '/billing'
-      fullPath: '/billing'
-      preLoaderRoute: typeof AuthBillingRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/ai': {
-      id: '/_auth/ai'
-      path: '/ai'
-      fullPath: '/ai'
-      preLoaderRoute: typeof AuthAiRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/admin': {
-      id: '/_auth/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthAdminRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/(public)/terms': {
-      id: '/(public)/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof publicTermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(public)/success': {
-      id: '/(public)/success'
-      path: '/success'
-      fullPath: '/success'
-      preLoaderRoute: typeof publicSuccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(public)/privacy': {
-      id: '/(public)/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof publicPrivacyRouteImport
+    '/(public)/about': {
+      id: '/(public)/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof publicAboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(public)/login': {
@@ -326,11 +270,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof publicLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(public)/about': {
-      id: '/(public)/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof publicAboutRouteImport
+    '/(public)/privacy': {
+      id: '/(public)/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof publicPrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(public)/success': {
+      id: '/(public)/success'
+      path: '/success'
+      fullPath: '/success'
+      preLoaderRoute: typeof publicSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(public)/terms': {
+      id: '/(public)/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof publicTermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth/admin': {
+      id: '/_auth/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthAdminRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/ai': {
+      id: '/_auth/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AuthAiRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/billing': {
+      id: '/_auth/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AuthBillingRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/dashboard': {
+      id: '/_auth/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthDashboardRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/settings': {
+      id: '/_auth/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthSettingsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/accept-invitation/$invitationId': {
+      id: '/accept-invitation/$invitationId'
+      path: '/accept-invitation/$invitationId'
+      fullPath: '/accept-invitation/$invitationId'
+      preLoaderRoute: typeof AcceptInvitationInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(public)/blog/': {
+      id: '/(public)/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof publicBlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(public)/blog/$slug': {
+      id: '/(public)/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof publicBlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth/projects/': {
@@ -340,26 +354,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthProjectsIndexRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/(public)/blog/': {
-      id: '/(public)/blog/'
-      path: '/blog'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof publicBlogIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_auth/projects/$projectId': {
       id: '/_auth/projects/$projectId'
       path: '/projects/$projectId'
       fullPath: '/projects/$projectId'
       preLoaderRoute: typeof AuthProjectsProjectIdRouteImport
       parentRoute: typeof AuthRoute
-    }
-    '/(public)/blog/$slug': {
-      id: '/(public)/blog/$slug'
-      path: '/blog/$slug'
-      fullPath: '/blog/$slug'
-      preLoaderRoute: typeof publicBlogSlugRouteImport
-      parentRoute: typeof rootRouteImport
     }
   }
 }

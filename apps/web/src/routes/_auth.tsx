@@ -1,8 +1,4 @@
-import {
-  createFileRoute,
-  Outlet,
-  redirect
-} from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   SidebarInset,
@@ -31,7 +27,6 @@ export const Route = createFileRoute("/_auth")({
       noIndex: true,
     }),
 });
-
 
 function AuthLayout() {
   return (

@@ -18,7 +18,8 @@ export const Route = createFileRoute("/_auth/settings")({
 });
 
 function SettingsPage() {
-  const { data: session, isPending: isSessionLoading } = authClient.useSession();
+  const { data: session, isPending: isSessionLoading } =
+    authClient.useSession();
 
   const [activeTab, setActiveTab] = useState("user");
 

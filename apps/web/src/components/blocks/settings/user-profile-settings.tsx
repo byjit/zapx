@@ -27,7 +27,7 @@ export function UserProfileSettings({ session }: { session: any }) {
         image,
       });
       toast.success("Profile updated successfully");
-    } catch (_error) {
+    } catch {
       toast.error("Failed to update profile");
     } finally {
       setIsLoading(false);

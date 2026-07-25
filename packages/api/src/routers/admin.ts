@@ -1,11 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { auth } from "@turborepo-boilerplate/auth";
-import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@turborepo-boilerplate/db";
-import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
 import { ledgerEntry } from "@turborepo-boilerplate/db/schema/ledger-entry";
+import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
 import { withdrawalRequest } from "@turborepo-boilerplate/db/schema/withdrawal";
 import { fromNodeHeaders } from "better-auth/node";
+import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 
@@ -267,12 +267,14 @@ export const adminRouter = router({
           WHERE id = ${input.id}
           FOR UPDATE
         `);
-        const withdrawal = approveResult.rows[0] as {
-          id: string;
-          user_id: string;
-          amount: string;
-          status: string;
-        } | undefined;
+        const withdrawal = approveResult.rows[0] as
+          | {
+              id: string;
+              user_id: string;
+              amount: string;
+              status: string;
+            }
+          | undefined;
 
         if (!withdrawal) {
           throw new TRPCError({
@@ -335,12 +337,14 @@ export const adminRouter = router({
           WHERE id = ${input.id}
           FOR UPDATE
         `);
-        const withdrawal = rejectResult.rows[0] as {
-          id: string;
-          user_id: string;
-          amount: string;
-          status: string;
-        } | undefined;
+        const withdrawal = rejectResult.rows[0] as
+          | {
+              id: string;
+              user_id: string;
+              amount: string;
+              status: string;
+            }
+          | undefined;
 
         if (!withdrawal) {
           throw new TRPCError({

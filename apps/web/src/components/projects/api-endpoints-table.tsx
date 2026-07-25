@@ -44,10 +44,7 @@ const methodVariantMap: Record<
   DELETE: "destructive",
 };
 
-export function ApiEndpointsTable({
-  api,
-  projectId,
-}: ApiEndpointsTableProps) {
+export function ApiEndpointsTable({ api, projectId }: ApiEndpointsTableProps) {
   const utils = trpc.useUtils();
   const [pricesByEndpointId, setPricesByEndpointId] = useState<
     Record<string, string>
@@ -116,7 +113,8 @@ export function ApiEndpointsTable({
             <CardDescription>{api.baseUrl}</CardDescription>
           </div>
           <div className="text-muted-foreground text-xs">
-            Imported {format(new Date(api.createdAt), "MMM d, yyyy 'at' h:mm a")}
+            Imported{" "}
+            {format(new Date(api.createdAt), "MMM d, yyyy 'at' h:mm a")}
           </div>
         </div>
         <CardDescription>
@@ -136,63 +134,65 @@ export function ApiEndpointsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {endpointRows.map(({ endpoint, draftPrice, hasChanged, isValidPrice }) => (
-              <TableRow key={endpoint.id}>
-                <TableCell>
-                  <Badge
-                    variant={methodVariantMap[endpoint.method] ?? "outline"}
-                    className="min-w-14 justify-center"
-                  >
-                    {endpoint.method}
-                  </Badge>
-                </TableCell>
-                <TableCell className="max-w-[280px] whitespace-normal font-mono text-xs">
-                  {endpoint.path}
-                </TableCell>
-                <TableCell className="max-w-[320px] whitespace-normal text-muted-foreground">
-                  {endpoint.summary ||
-                    endpoint.description ||
-                    endpoint.operationId ||
-                    "No description"}
-                </TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    <Input
-                      value={draftPrice}
-                      onChange={(event) =>
-                        setPricesByEndpointId((current) => ({
-                          ...current,
-                          [endpoint.id]: event.target.value,
-                        }))
+            {endpointRows.map(
+              ({ endpoint, draftPrice, hasChanged, isValidPrice }) => (
+                <TableRow key={endpoint.id}>
+                  <TableCell>
+                    <Badge
+                      variant={methodVariantMap[endpoint.method] ?? "outline"}
+                      className="min-w-14 justify-center"
+                    >
+                      {endpoint.method}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="max-w-[280px] whitespace-normal font-mono text-xs">
+                    {endpoint.path}
+                  </TableCell>
+                  <TableCell className="max-w-[320px] whitespace-normal text-muted-foreground">
+                    {endpoint.summary ||
+                      endpoint.description ||
+                      endpoint.operationId ||
+                      "No description"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <Input
+                        value={draftPrice}
+                        onChange={(event) =>
+                          setPricesByEndpointId((current) => ({
+                            ...current,
+                            [endpoint.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="$0.001"
+                        className="max-w-[140px]"
+                      />
+                      {draftPrice && !isValidPrice ? (
+                        <p className="text-destructive text-xs">
+                          Use a value like $0.001
+                        </p>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      disabled={
+                        !hasChanged ||
+                        !isValidPrice ||
+                        savingEndpointId === endpoint.id
                       }
-                      placeholder="$0.001"
-                      className="max-w-[140px]"
-                    />
-                    {draftPrice && !isValidPrice ? (
-                      <p className="text-destructive text-xs">
-                        Use a value like $0.001
-                      </p>
-                    ) : null}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1.5"
-                    disabled={
-                      !hasChanged ||
-                      !isValidPrice ||
-                      savingEndpointId === endpoint.id
-                    }
-                    onClick={() => saveEndpointPrice(endpoint, draftPrice)}
-                  >
-                    <Save className="size-3.5" />
-                    {savingEndpointId === endpoint.id ? "Saving..." : "Save"}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+                      onClick={() => saveEndpointPrice(endpoint, draftPrice)}
+                    >
+                      <Save className="size-3.5" />
+                      {savingEndpointId === endpoint.id ? "Saving..." : "Save"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )
+            )}
           </TableBody>
         </Table>
       </CardContent>

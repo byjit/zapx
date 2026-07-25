@@ -8,7 +8,7 @@ const globalForRedis = globalThis as unknown as {
 
 const createRedisClient = () => {
   if (!env.REDIS_URL) {
-    return undefined;
+    return;
   }
 
   return new Redis(env.REDIS_URL, {

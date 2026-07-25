@@ -66,7 +66,7 @@ export function OrganizationInvites({
         },
       });
       setInvites(data || []);
-    } catch (_error) {
+    } catch {
       // Squelch error if listInvitations fails (e.g. permission denied)
     } finally {
       setIsLoading(false);
@@ -106,7 +106,7 @@ export function OrganizationInvites({
       });
       toast.success("Invitation cancelled");
       fetchInvites();
-    } catch (_e) {
+    } catch {
       toast.error("Failed to cancel invitation");
     }
   };

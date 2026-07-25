@@ -8,10 +8,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import {
-  createInsertSchema,
-  createSelectSchema,
-} from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import type z from "zod";
 
 export const paymentReceiptStatus = pgEnum("payment_receipt_status", [

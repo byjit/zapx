@@ -1,7 +1,7 @@
-import { eq, sql } from "drizzle-orm";
 import { db } from "@turborepo-boilerplate/db";
 import { ledgerEntry } from "@turborepo-boilerplate/db/schema/ledger-entry";
 import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
+import { eq, sql } from "drizzle-orm";
 
 interface CreditProviderInput {
   userId: string;
@@ -86,10 +86,12 @@ export async function debitWithdrawal(input: DebitWithdrawalInput) {
       WHERE user_id = ${input.userId}
       FOR UPDATE
     `);
-    const balance = balanceResult.rows[0] as {
-      user_id: string;
-      available_balance: string;
-    } | undefined;
+    const balance = balanceResult.rows[0] as
+      | {
+          user_id: string;
+          available_balance: string;
+        }
+      | undefined;
 
     if (
       !balance ||
