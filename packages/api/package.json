@@ -38,8 +38,8 @@
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
-    "trpc-to-openapi": "^3.1.0",
-    "yaml": "^2.8.2",
+    "trpc-to-openapi": "^3.3.0",
+    "yaml": "^2.9.0",
     "zod": "catalog:"
   }
 }

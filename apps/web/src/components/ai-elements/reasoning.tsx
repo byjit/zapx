@@ -170,7 +170,10 @@ export const ReasoningContent = memo(
       )}
       {...props}
     >
-      <Streamdown {...props}>{children}</Streamdown>
+      {/* `props` belongs to CollapsibleContent; forwarding it here would leak
+          collapsible-only props (forceMount, onAnimationEnd, ...) into the
+          markdown renderer and conflicts with Streamdown's narrower `dir`. */}
+      <Streamdown>{children}</Streamdown>
     </CollapsibleContent>
   )
 );

@@ -23,8 +23,19 @@
       "!**/.alchemy/**/*",
       "!**/.svelte-kit/**/*",
       "!**/wrangler.jsonc",
-      "!**/.source/**/*"
+      "!**/.source/**/*",
+      "!apps/waitlist/index.html"
     ]
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "useSortedKeys": "off",
+        "useSortedAttributes": "off",
+        "useSortedInterfaceMembers": "off",
+        "useSortedProperties": "off"
+      }
+    }
   },
   "linter": {
     "enabled": true,
@@ -39,7 +50,8 @@
           "level": "warn",
           "fix": "safe"
         },
-        "useExhaustiveDependencies": "off"
+        "useExhaustiveDependencies": "off",
+        "useImageSize": "off"
       },
       "suspicious": "off",
       "style": "off",
@@ -47,16 +59,21 @@
         "noImgElement": "off",
         "noBarrelFile": "off",
         "noNamespaceImport": "off",
-        "useTopLevelRegex": "off"
+        "useTopLevelRegex": "off",
+        "noJsxPropsBind": "off",
+        "noAwaitInLoops": "off"
       },
       "nursery": "off",
       "a11y": "warn",
       "complexity": {
-        "noExcessiveLinesPerFunction": "off"
+        "noExcessiveLinesPerFunction": "off",
+        "noExcessiveCognitiveComplexity": "off",
+        "useSimplifiedLogicExpression": "off",
+        "noRedundantDefaultExport": "off"
       }
     }
   },
-  "extends": ["ultracite"],
+  "extends": ["ultracite/biome/core"],
   "overrides": [
     {
       "includes": [

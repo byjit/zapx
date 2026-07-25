@@ -6,16 +6,13 @@ import {
 } from "@turborepo-boilerplate/db/api-registry";
 import { getProjectByIdForUser } from "@turborepo-boilerplate/db/project";
 import { z } from "zod";
-import { parseOpenApiSpec } from "../openapi";
 import { protectedProcedure, router } from "../index";
+import { parseOpenApiSpec } from "../openapi";
 import { validateBaseUrl } from "../url-validation";
 
 const endpointPriceSchema = z
   .string()
-  .regex(
-    /^\$(?:0|[1-9]\d*)(?:\.\d{1,6})?$/,
-    "Price must look like $0.001"
-  );
+  .regex(/^\$(?:0|[1-9]\d*)(?:\.\d{1,6})?$/, "Price must look like $0.001");
 
 const createApiInputSchema = z.object({
   projectId: z.string().min(1),
@@ -45,7 +42,10 @@ export const apiRouter = router({
         });
       }
 
-      return listProviderApisByProjectForUser(input.projectId, ctx.session.user.id);
+      return listProviderApisByProjectForUser(
+        input.projectId,
+        ctx.session.user.id
+      );
     }),
 
   create: protectedProcedure

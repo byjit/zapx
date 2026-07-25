@@ -47,11 +47,20 @@ export const providerEndpoint = pgTable(
   ]
 );
 
-export const ProviderEndpointSelectSchema = createSelectSchema(providerEndpoint);
-export const ProviderEndpointInsertSchema = createInsertSchema(providerEndpoint);
-export const ProviderEndpointUpdateSchema = createUpdateSchema(providerEndpoint);
+export const ProviderEndpointSelectSchema =
+  createSelectSchema(providerEndpoint);
+export const ProviderEndpointInsertSchema =
+  createInsertSchema(providerEndpoint);
+export const ProviderEndpointUpdateSchema =
+  createUpdateSchema(providerEndpoint);
 
 export type ProviderEndpoint = typeof providerEndpoint;
-export type ProviderEndpointSelect = z.infer<typeof ProviderEndpointSelectSchema>;
-export type ProviderEndpointInsert = z.infer<typeof ProviderEndpointInsertSchema>;
-export type ProviderEndpointUpdate = z.infer<typeof ProviderEndpointUpdateSchema>;
+export type ProviderEndpointSelect = z.infer<
+  typeof ProviderEndpointSelectSchema
+>;
+export type ProviderEndpointInsert = z.infer<
+  typeof ProviderEndpointInsertSchema
+>;
+export type ProviderEndpointUpdate = z.infer<
+  typeof ProviderEndpointUpdateSchema
+>;

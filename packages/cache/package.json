@@ -17,7 +17,7 @@
   "dependencies": {
     "@turborepo-boilerplate/env": "workspace:*",
     "@turborepo-boilerplate/services": "workspace:*",
-    "rate-limiter-flexible": "^10.0.1"
+    "rate-limiter-flexible": "^11.2.0"
   },
   "devDependencies": {
     "tsdown": "catalog:",

@@ -1,6 +1,8 @@
 # Implementation Review — spec.md vs. current code
 
-Review date: 2026-07-25. Baseline commit: `9c00cb1` ("Implement x402 payment gateway and financial ledger"). Packages audited against the real installed `@x402/{core,evm,express,extensions}@2.7.0` source, not documentation alone.
+Review date: 2026-07-25. Baseline commit: `9c00cb1` ("Implement x402 payment gateway and financial ledger"). Packages audited against the real installed `@x402/{core,evm,express,extensions}` source, not documentation alone.
+
+> **Re-verified after the 2026-07-25 dependency upgrade** (`@x402/* 2.7.0 → 2.19.0`). Every finding below still stands on 2.19.0. In particular: `parseRoutePattern` still escapes `{` and `}` as regex literals (2.19 only added backslash escaping), and `buildPaymentRequirements` still throws the same "Make sure to call `initialize()`" error. Line numbers cited from `dist/cjs/server/index.js` refer to 2.7.0 and have shifted; function names are unchanged.
 
 Scope: how far the code delivers **spec.md §15 (MVP Scope)** and the **§8 MVP Build Order**, and what it takes to get there. Deliberately excluded — everything spec.md itself defers: Bazaar, client SDK, public discovery, queues, edge layer, Solana, API-slug routing, materialised analytics views. All confirmed absent from the codebase, correctly so; no work proposed there.
 

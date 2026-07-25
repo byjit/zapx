@@ -1,7 +1,7 @@
-import { and, count, desc, eq, gte, lte } from "drizzle-orm";
 import { db } from "@turborepo-boilerplate/db";
-import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
 import { ledgerEntry } from "@turborepo-boilerplate/db/schema/ledger-entry";
+import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
+import { and, count, desc, eq, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 
@@ -34,9 +34,7 @@ export const balanceRouter = router({
       z.object({
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
-        type: z
-          .enum(["credit", "debit", "withdrawal", "refund"])
-          .optional(),
+        type: z.enum(["credit", "debit", "withdrawal", "refund"]).optional(),
         apiId: z.string().optional(),
         from: z.date().optional(),
         to: z.date().optional(),
@@ -69,10 +67,7 @@ export const balanceRouter = router({
           .orderBy(desc(ledgerEntry.createdAt))
           .limit(input.limit)
           .offset(input.offset),
-        db
-          .select({ totalCount: count() })
-          .from(ledgerEntry)
-          .where(whereClause),
+        db.select({ totalCount: count() }).from(ledgerEntry).where(whereClause),
       ]);
 
       return {

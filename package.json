@@ -24,15 +24,15 @@
     "docker:prod:logs": "docker compose -f docker-compose.prod.yml logs -f"
   },
   "dependencies": {
-    "dotenv": "^17.3.1",
-    "zod": "^4.3.6"
+    "dotenv": "^17.4.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.5",
-    "@types/node": "^25.5.0",
-    "tsdown": "^0.21.3",
-    "turbo": "^2.8.17",
-    "ultracite": "5.6.1"
+    "@biomejs/biome": "2.5.5",
+    "@types/node": "^26.1.1",
+    "tsdown": "^0.22.14",
+    "turbo": "^2.10.6",
+    "ultracite": "7.9.4"
   },
   "packageManager": "pnpm@10.32.1"
 }

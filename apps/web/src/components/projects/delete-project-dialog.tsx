@@ -41,8 +41,8 @@ export function DeleteProjectDialog({
         <DialogHeader>
           <DialogTitle>Delete Project</DialogTitle>
           <DialogDescription>
-            This action is permanent and cannot be undone. All APIs and endpoints
-            within this project will also be deleted.
+            This action is permanent and cannot be undone. All APIs and
+            endpoints within this project will also be deleted.
           </DialogDescription>
         </DialogHeader>
 

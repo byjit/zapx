@@ -1,7 +1,6 @@
-import { HTTPFacilitatorClient } from "@x402/core/server";
-import { registerExactEvmScheme } from "@x402/evm/exact/server";
-import { x402ResourceServer } from "@x402/core/server";
 import { env } from "@turborepo-boilerplate/env";
+import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
+import { registerExactEvmScheme } from "@x402/evm/exact/server";
 
 let resourceServer: x402ResourceServer | null = null;
 

@@ -96,7 +96,6 @@ export const createServer = (): Express => {
       const result = await rateLimiter.consume(getRateLimitKey(req));
       setRateLimitHeaders(res, result);
       next();
-      return;
     } catch (error) {
       if (isRateLimitResult(error)) {
         setRateLimitHeaders(res, error);
@@ -272,7 +271,6 @@ export const createServer = (): Express => {
     if (env.NODE_ENV === "development" && error instanceof HttpError) {
       return error.details;
     }
-    return undefined;
   };
 
   // Centralized error handler to log and return consistent responses

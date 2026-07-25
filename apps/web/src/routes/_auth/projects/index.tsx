@@ -1,6 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { FolderKanban, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  FolderKanban,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import Loader from "@/components/loader";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";

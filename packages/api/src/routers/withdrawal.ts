@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@turborepo-boilerplate/db";
-import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
 import { ledgerEntry } from "@turborepo-boilerplate/db/schema/ledger-entry";
+import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
 import { withdrawalRequest } from "@turborepo-boilerplate/db/schema/withdrawal";
+import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 
@@ -47,15 +47,14 @@ export const withdrawalRouter = router({
           WHERE user_id = ${userId}
           FOR UPDATE
         `);
-        const balance = balanceResult.rows[0] as {
-          user_id: string;
-          available_balance: string;
-        } | undefined;
+        const balance = balanceResult.rows[0] as
+          | {
+              user_id: string;
+              available_balance: string;
+            }
+          | undefined;
 
-        if (
-          !balance ||
-          Number.parseFloat(balance.available_balance) < amount
-        ) {
+        if (!balance || Number.parseFloat(balance.available_balance) < amount) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Insufficient balance",

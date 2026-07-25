@@ -1,10 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-  ArrowLeft, MoreHorizontal,
-  Pencil,
-  Plus,
-  Trash2
-} from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import Loader from "@/components/loader";
 import { ApiEndpointsTable } from "@/components/projects/api-endpoints-table";
@@ -49,14 +44,15 @@ function ProjectDetailPage() {
   const { data: project, isLoading } = trpc.project.getById.useQuery({
     id: projectId,
   });
-  const { data: apis, isLoading: isApisLoading } = trpc.api.listByProject.useQuery(
-    {
-      projectId,
-    },
-    {
-      enabled: !!project,
-    }
-  );
+  const { data: apis, isLoading: isApisLoading } =
+    trpc.api.listByProject.useQuery(
+      {
+        projectId,
+      },
+      {
+        enabled: !!project,
+      }
+    );
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);

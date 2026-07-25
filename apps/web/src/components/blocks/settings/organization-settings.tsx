@@ -83,7 +83,7 @@ export function OrganizationSettings({
       });
       toast.success("Switched organization");
       window.location.reload();
-    } catch (_error) {
+    } catch {
       toast.error("Failed to switch organization");
     }
   };

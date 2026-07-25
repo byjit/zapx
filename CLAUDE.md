@@ -41,7 +41,21 @@ Zapx - allows developers to monetize APIs on a per-request basis using the x402 
 - **PNPM (Package Manager)** - pnpm for efficient package management
 - **Ultracite** - Code quality, linting and consistency tool
 - **Supertest** - Testing framework for backend
-- **AI SDK v6** - For AI implementation
+- **AI SDK v7** - For AI implementation
+
+## Reference Documentation
+
+Fetch these `llms.txt` indexes when working on the corresponding area — they list the
+authoritative sub-pages to read. Prefer them over recalling API details from memory.
+
+| Area | URL |
+|------|-----|
+| x402 payment protocol | https://docs.x402.org/llms.txt |
+| shadcn/ui | https://ui.shadcn.com/llms.txt |
+| Better Auth | https://better-auth.com/llms.txt |
+| tRPC | https://trpc.io/llms.txt |
+| Vercel AI SDK | https://ai-sdk.dev/llms.txt |
+| Vercel AI Elements (UI for AI apps) | https://elements.ai-sdk.dev/llms.txt |
 
 
 ## Project Structure

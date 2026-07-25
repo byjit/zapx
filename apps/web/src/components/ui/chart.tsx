@@ -118,7 +118,10 @@ function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
+}: // recharts 3 moves the context-injected props (active/payload/label) off
+// `TooltipProps` and onto `TooltipContentProps`, which is what a custom
+// tooltip `content` component actually receives.
+Partial<RechartsPrimitive.TooltipContentProps> &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean
     hideIndicator?: boolean
@@ -186,9 +189,16 @@ function ChartTooltipContent({
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
             const indicatorColor = color || item.payload.fill || item.color
 
+            // recharts 3 widens `dataKey` to include accessor functions,
+            // which are not valid React keys.
+            const itemKey =
+              typeof item.dataKey === "string" || typeof item.dataKey === "number"
+                ? item.dataKey
+                : (item.name ?? index)
+
             return (
               <div
-                key={item.dataKey}
+                key={itemKey}
                 className={cn(
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center"
@@ -259,7 +269,10 @@ function ChartLegendContent({
   verticalAlign = "bottom",
   nameKey,
 }: React.ComponentProps<"div"> &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+  // recharts 3 no longer exposes `payload` on `LegendProps`; the legend
+  // `content` component receives it as `LegendPayload[]`.
+  Pick<RechartsPrimitive.LegendProps, "verticalAlign"> & {
+    payload?: RechartsPrimitive.LegendPayload[]
     hideIcon?: boolean
     nameKey?: string
   }) {

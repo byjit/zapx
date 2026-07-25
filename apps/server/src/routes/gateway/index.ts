@@ -1,17 +1,17 @@
-import { eq } from "drizzle-orm";
 import { db } from "@turborepo-boilerplate/db";
+import { user } from "@turborepo-boilerplate/db/schema/auth";
+import { paymentReceipt } from "@turborepo-boilerplate/db/schema/payment-receipt";
 import { providerApi } from "@turborepo-boilerplate/db/schema/provider-api";
 import { providerEndpoint } from "@turborepo-boilerplate/db/schema/provider-endpoint";
-import { paymentReceipt } from "@turborepo-boilerplate/db/schema/payment-receipt";
-import { user } from "@turborepo-boilerplate/db/schema/auth";
 import type { RouteConfig } from "@x402/core/server";
 import { x402HTTPResourceServer } from "@x402/core/server";
+import { eq } from "drizzle-orm";
 import express, { type Request, type Response, type Router } from "express";
 import { creditProvider } from "../../services/ledger";
 import {
+  getNetwork,
   getPayTo,
   getPlatformFeePercent,
-  getNetwork,
   getResourceServer,
 } from "../../services/payment-verification";
 import { logger } from "../../utils/logger";
@@ -52,9 +52,7 @@ export const gatewayRouter: Router = express.Router();
 
 // Edge case #11: Parse raw body for gateway routes so we can forward
 // binary/multipart bodies without corruption from express.json()
-gatewayRouter.use(
-  express.raw({ type: "*/*", limit: "10mb" })
-);
+gatewayRouter.use(express.raw({ type: "*/*", limit: "10mb" }));
 
 // ---------------------------------------------------------------------------
 // Database lookups
@@ -244,10 +242,7 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
     // Edge case #13: Reuse singleton resource server
     const resourceServer = getResourceServer();
 
-    const httpServer = new x402HTTPResourceServer(
-      resourceServer,
-      routesConfig
-    );
+    const httpServer = new x402HTTPResourceServer(resourceServer, routesConfig);
 
     // Process the payment request
     const requestContext = {
@@ -256,12 +251,10 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
           req.headers[name.toLowerCase()] as string | undefined,
         getMethod: () => req.method,
         getPath: () => proxyPath,
-        getUrl: () =>
-          `${req.protocol}://${req.get("host")}${req.originalUrl}`,
+        getUrl: () => `${req.protocol}://${req.get("host")}${req.originalUrl}`,
         getAcceptHeader: () => (req.headers.accept as string) || "",
         getUserAgent: () => (req.headers["user-agent"] as string) || "",
-        getQueryParams: () =>
-          req.query as Record<string, string | string[]>,
+        getQueryParams: () => req.query as Record<string, string | string[]>,
         getQueryParam: (name: string) =>
           req.query[name] as string | string[] | undefined,
         getBody: () => req.body,
@@ -449,10 +442,7 @@ const HOP_BY_HOP_HEADERS = new Set([
   "x-payment-response",
 ]);
 
-function forwardUpstreamHeaders(
-  res: Response,
-  upstream: globalThis.Response
-) {
+function forwardUpstreamHeaders(res: Response, upstream: globalThis.Response) {
   upstream.headers.forEach((value, key) => {
     if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
       res.setHeader(key, value);
@@ -528,10 +518,7 @@ async function fetchUpstream(
   };
 
   // Edge case #11: Forward raw body without re-serializing
-  if (
-    ["POST", "PUT", "PATCH"].includes(req.method.toUpperCase()) &&
-    req.body
-  ) {
+  if (["POST", "PUT", "PATCH"].includes(req.method.toUpperCase()) && req.body) {
     if (Buffer.isBuffer(req.body)) {
       init.body = req.body;
     } else if (typeof req.body === "string") {
@@ -559,7 +546,9 @@ function matchPath(pattern: string, actual: string): boolean {
   // Wildcard: /files/** or /files/*
   if (normalizedPattern.endsWith("/**") || normalizedPattern.endsWith("/*")) {
     const prefix = normalizedPattern.replace(/\/\*\*?$/, "");
-    return normalizedActual.startsWith(prefix + "/") || normalizedActual === prefix;
+    return (
+      normalizedActual.startsWith(prefix + "/") || normalizedActual === prefix
+    );
   }
 
   // Path parameter matching: /users/{id} or /users/:id or /users/{id?}

@@ -2,9 +2,11 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ChevronsUpDown,
   CreditCard,
-  FolderClosed, LayoutDashboard,
+  FolderClosed,
+  LayoutDashboard,
   LogOut,
-  Settings, User
+  Settings,
+  User,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

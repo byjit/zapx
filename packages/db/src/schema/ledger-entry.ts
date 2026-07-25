@@ -7,10 +7,7 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import {
-  createInsertSchema,
-  createSelectSchema,
-} from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import type z from "zod";
 import { user } from "./auth";
 import { providerApi } from "./provider-api";
