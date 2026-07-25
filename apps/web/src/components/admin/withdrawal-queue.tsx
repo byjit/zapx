@@ -81,7 +81,7 @@ const ACTION_COPY: Record<
   reject: {
     title: "Reject withdrawal?",
     description:
-      "Rejecting returns the full amount to the provider's available balance and appends a refund entry to their ledger. This cannot be undone.",
+      "Rejecting returns the full amount to the provider's available balance and appends a refund entry to their ledger. This cannot be undone. If the request was already approved, only reject it when the USDC has NOT been sent — the payout happens out of band and rejecting after sending would pay the provider twice.",
     actionLabel: "Reject",
     destructive: true,
   },

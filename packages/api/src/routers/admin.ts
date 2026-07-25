@@ -2,12 +2,13 @@ import { TRPCError } from "@trpc/server";
 import { auth } from "@turborepo-boilerplate/auth";
 import { db } from "@turborepo-boilerplate/db";
 import { ledgerEntry } from "@turborepo-boilerplate/db/schema/ledger-entry";
+import { paymentReceipt } from "@turborepo-boilerplate/db/schema/payment-receipt";
 import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
 import { withdrawalRequest } from "@turborepo-boilerplate/db/schema/withdrawal";
 import { fromNodeHeaders } from "better-auth/node";
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { adminProcedure, router } from "../index";
+import { adminProcedure, protectedProcedure, router } from "../index";
 
 type LockedWithdrawal = {
   id: string;
@@ -163,9 +164,14 @@ export const adminRouter = router({
     }),
 
   /**
-   * Stop impersonating and return to admin session
+   * Stop impersonating and return to the admin session.
+   *
+   * Deliberately not `adminProcedure`: during impersonation the session user *is*
+   * the impersonated user, so an admin gate here would reject the one caller who
+   * needs it. Better Auth authorizes this itself by requiring the session to
+   * carry `impersonatedBy`.
    */
-  stopImpersonating: adminProcedure.mutation(async ({ ctx }) => {
+  stopImpersonating: protectedProcedure.mutation(async ({ ctx }) => {
     try {
       await auth.api.stopImpersonating({
         headers: fromNodeHeaders(ctx.headers),
@@ -195,13 +201,23 @@ export const adminRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const [existingEntry] = await db
-        .select({ id: ledgerEntry.id })
-        .from(ledgerEntry)
-        .where(eq(ledgerEntry.userId, input.userId))
-        .limit(1);
+      // Both tables reference `user` with `ON DELETE RESTRICT`, so either one is
+      // enough to make the delete fail — check both to explain why instead of
+      // surfacing a raw foreign-key error.
+      const [[existingEntry], [existingReceipt]] = await Promise.all([
+        db
+          .select({ id: ledgerEntry.id })
+          .from(ledgerEntry)
+          .where(eq(ledgerEntry.userId, input.userId))
+          .limit(1),
+        db
+          .select({ id: paymentReceipt.id })
+          .from(paymentReceipt)
+          .where(eq(paymentReceipt.userId, input.userId))
+          .limit(1),
+      ]);
 
-      if (existingEntry) {
+      if (existingEntry ?? existingReceipt) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message:

@@ -50,7 +50,7 @@ unreferenced duplicates of it.
 | File | Purpose |
 |------|---------|
 | `apps/server/src/routes/gateway/index.ts` | The handler at `/gateway/:apiId/{*path}` |
-| `apps/server/src/routes/gateway/routing.ts` | Path normalization, endpoint matching, x402 route-key translation |
+| `apps/server/src/routes/gateway/routing.ts` | Path normalization (origin-escape safe), endpoint matching, x402 route config |
 | `apps/server/src/routes/gateway/reservation.ts` | Atomic single-use claim on a payment payload |
 | `apps/server/src/routes/gateway/payment-key.ts` | Server-derived replay key (EIP-3009 / Permit2 nonce) |
 | `apps/server/src/routes/gateway/proxy.ts` | Upstream URL/header/response handling |
@@ -61,7 +61,7 @@ unreferenced duplicates of it.
 1. Resolve `apiId` → owner, base URL, ban status (one query; endpoints cached against `provider_api.updated_at`)
 2. Match `method + path` → `provider_endpoint`, literal paths preferred over templated ones
 3. No payment → HTTP 402 with x402 payment requirements
-4. Payment present → verify via facilitator; a priced endpoint that x402 reports as free fails closed with a 500 rather than being served
+4. Payment present → verify via facilitator. x402 gets a wildcard route config, since the gateway has already matched and priced the request — there is no second matcher to disagree with it. A priced endpoint that x402 still reports as free fails closed with a 500 rather than being served
 5. **Reserve the payment payload** (atomic insert keyed on the on-chain nonce) — replays get 409 before any upstream work
 6. Proxy to `provider_api.base_url`; redirects are refused
 7. Settle via facilitator, only on a 2xx upstream
@@ -97,6 +97,7 @@ unreferenced duplicates of it.
 | File | Change |
 |------|--------|
 | `packages/api/src/routers/index.ts` | Registers `analytics`, `balance`, `withdrawal`; `organization` deliberately unregistered (spec §6.0: one balance per user) |
+| `packages/auth/src/index.ts` | Better Auth's `organization` plugin is unregistered too — unregistering only the tRPC router left its REST invite surface live |
 | `apps/server/src/app.ts` | `/gateway` mounted with its own wildcard, credential-free CORS so browser x402 clients can read the payment headers; dashboard CORS stays pinned to `CORS_ORIGIN` |
 
 ## What's Not Built
@@ -148,3 +149,8 @@ appRouter
 Unit coverage for the routing, money, replay-key, SSRF and pricing logic, plus a
 Supertest suite over the gateway (402 challenge, paid path, replay, upstream
 failure, header hygiene) driven by local stub facilitator and upstream servers.
+
+The paid-path integration tests **skip themselves** until
+`0003_glossy_nightmare.sql` is applied to `DATABASE_URL`, since the payment
+reservation needs the new `payment_receipt` columns. Everything else runs
+unconditionally.

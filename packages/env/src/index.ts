@@ -78,12 +78,13 @@ export const env = parsedEnv.data;
  * any other chain used to fail silently, one request at a time; refuse to boot
  * instead so a mainnet misconfiguration is impossible to miss.
  */
-if (
-  new URL(env.FACILITATOR_URL).hostname.endsWith("x402.org") &&
-  env.X402_NETWORK !== TESTNET_NETWORK
-) {
+const facilitatorHost = new URL(env.FACILITATOR_URL).hostname.toLowerCase();
+const isPublicFacilitator =
+  facilitatorHost === "x402.org" || facilitatorHost.endsWith(".x402.org");
+
+if (isPublicFacilitator && env.X402_NETWORK !== TESTNET_NETWORK) {
   throw new Error(
-    `Invalid x402 configuration: the public facilitator ${TESTNET_FACILITATOR_URL} only supports ${TESTNET_NETWORK}, but X402_NETWORK is ${env.X402_NETWORK}. Point FACILITATOR_URL at a facilitator that settles on ${env.X402_NETWORK}.`
+    `Invalid x402 configuration: the public facilitator at ${env.FACILITATOR_URL} only settles on ${TESTNET_NETWORK}, but X402_NETWORK is ${env.X402_NETWORK}. Point FACILITATOR_URL at a facilitator that settles on ${env.X402_NETWORK}.`
   );
 }
 

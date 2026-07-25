@@ -13,7 +13,9 @@ export const withdrawalRouter = router({
   request: protectedProcedure
     .input(
       z.object({
-        amount: z.string().regex(/^\d+(\.\d{1,6})?$/, "Invalid amount"),
+        // At most 14 integer digits so the value always fits `numeric(20,6)`;
+        // without the bound Postgres raises a raw overflow error.
+        amount: z.string().regex(/^\d{1,14}(\.\d{1,6})?$/, "Invalid amount"),
         walletAddress: z
           .string()
           .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid wallet address"),

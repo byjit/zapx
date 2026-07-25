@@ -31,7 +31,7 @@ If `creditProvider()` or the `paymentReceipt` insert throws after `processSettle
 
 ### 2. Upstream fails after payment is verified but before settlement
 
-> Status: **Fixed** — the gateway settles only after a 2xx upstream response. On an upstream exception the reservation is released so the same signature can be retried; on a non-2xx it is burned without settling, so nobody is charged.
+> Status: **Fixed** — the gateway settles only after a 2xx upstream response. A reservation is never handed back: releasing one on upstream failure would make a single signature an unbounded lever for free upstream work, since the caller can induce the failure (a slow query, a redirect) and nothing settles on that path. Nothing is charged either way, so retrying costs only a fresh signature.
 
 **File:** `apps/server/src/routes/gateway/index.ts:202-208`
 
@@ -272,7 +272,7 @@ The amount regex accepts any positive decimal, including `0.000001`. Processing 
 
 ### 21. Upstream response headers are mostly dropped
 
-> Status: **Fixed** — all upstream headers are forwarded except hop-by-hop and payment headers. Also now stripped: `content-encoding` and `content-length`, which described the compressed upstream body that `fetch` had already decompressed; multiple `set-cookie` headers are preserved individually via `getSetCookie()` instead of being comma-joined.
+> Status: **Fixed** — all upstream headers are forwarded except hop-by-hop and payment headers. Also now stripped: `content-encoding` and `content-length`, which described the compressed upstream body that `fetch` had already decompressed; `set-cookie` is dropped entirely rather than comma-joined — the gateway serves from the Zapx origin, so relaying a provider's cookies would let a malicious upstream overwrite a caller's session cookie site-wide, and x402 callers are wallets and agents rather than cookie-bearing browsers.
 
 **File:** `apps/server/src/routes/gateway/index.ts:259-265`
 

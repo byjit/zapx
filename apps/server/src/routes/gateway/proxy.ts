@@ -23,7 +23,10 @@ const SKIP_RESPONSE_HEADERS = new Set([
   "upgrade",
   "content-encoding",
   "content-length",
-  // Handled separately so multiple cookies are not comma-joined into one.
+  // Never relay a provider's cookies. They would be set on the Zapx origin, so a
+  // malicious upstream could overwrite a caller's session cookie for the whole
+  // site. x402 callers are wallets and agents, not cookie-bearing browsers, so
+  // nothing legitimate is lost.
   "set-cookie",
   "payment-required",
   "payment-response",
@@ -68,9 +71,19 @@ const METHODS_WITH_BODY = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 /**
  * Resolves the upstream URL for a proxied request.
  *
- * The base URL's own path prefix is preserved: `new URL("/weather",
- * "https://api.example.com/v1")` drops `/v1` and 404s upstream, and versioned
- * base URLs are the norm in OpenAPI `servers` entries.
+ * Built by cloning the registered base URL and *assigning* `pathname`, never by
+ * resolving a relative reference against it. Resolution would let the request
+ * path change the origin — `new URL("/\\evil.com/x", "https://api.example.com")`
+ * is `https://evil.com/x` for `http(s)` schemes — which no amount of
+ * registration-time validation or redirect refusal can catch. Assignment cannot
+ * touch the host, and it percent-encodes `?` and `#` so a path segment cannot
+ * smuggle a query string either. Cloning (rather than `base.origin`) also keeps
+ * any userinfo and port the provider registered.
+ *
+ * The base URL's own path prefix is preserved: dropping `/v1` from
+ * `https://api.example.com/v1` 404s upstream, and versioned base URLs are the
+ * norm in OpenAPI `servers` entries. `path` must already be dot-segment free
+ * (see `resolveProxyPath`) or `..` would climb back out of that prefix.
  *
  * The query string is copied verbatim from the raw request line rather than
  * rebuilt from `req.query`, which preserves duplicate-key order and bracketed
@@ -81,14 +94,14 @@ export function buildUpstreamUrl(
   path: string,
   originalUrl: string
 ): URL {
-  const base = new URL(baseUrl);
-  const prefix = base.pathname.replace(/\/+$/, "");
-  const url = new URL(`${prefix}${path}`, base.origin);
+  const url = new URL(baseUrl);
+  const prefix = url.pathname.replace(/\/+$/, "");
+
+  url.pathname = `${prefix}${path}`;
+  url.hash = "";
 
   const queryStart = originalUrl.indexOf("?");
-  if (queryStart !== -1) {
-    url.search = originalUrl.slice(queryStart + 1);
-  }
+  url.search = queryStart === -1 ? "" : originalUrl.slice(queryStart + 1);
 
   return url;
 }
@@ -130,14 +143,16 @@ export async function fetchUpstream(
     signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
   };
 
-  // Edge case #11: forward the raw body without re-serializing.
-  if (METHODS_WITH_BODY.has(req.method.toUpperCase()) && req.body) {
-    if (Buffer.isBuffer(req.body)) {
+  // Edge case #11: forward the raw body without re-serializing. Anything that is
+  // not already raw bytes is skipped rather than stringified — `express.raw`
+  // leaves `req.body` as an empty object when a request carries no
+  // `content-type`, and forwarding a literal `{}` in place of the real body is
+  // worse than forwarding nothing.
+  if (METHODS_WITH_BODY.has(req.method.toUpperCase())) {
+    if (Buffer.isBuffer(req.body) && req.body.length > 0) {
       init.body = req.body;
-    } else if (typeof req.body === "string") {
+    } else if (typeof req.body === "string" && req.body.length > 0) {
       init.body = req.body;
-    } else {
-      init.body = JSON.stringify(req.body);
     }
   }
 
@@ -153,11 +168,6 @@ export function forwardUpstreamHeaders(
       res.setHeader(key, value);
     }
   });
-
-  const cookies = upstream.headers.getSetCookie();
-  if (cookies.length > 0) {
-    res.setHeader("set-cookie", cookies);
-  }
 }
 
 /**

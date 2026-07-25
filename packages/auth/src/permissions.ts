@@ -41,10 +41,8 @@ export function isAdminUser(user: RoleBearingUser | null | undefined): boolean {
     return true;
   }
 
-  return (
-    user.role
-      ?.split(",")
-      .map((role) => role.trim())
-      .includes(PLATFORM_ADMIN_ROLE) ?? false
-  );
+  // Split without trimming, exactly as Better Auth's own `hasPermission` does.
+  // Being more lenient here would grant admin to a session Better Auth itself
+  // refuses — an authz predicate must never diverge in the permissive direction.
+  return user.role?.split(",").includes(PLATFORM_ADMIN_ROLE) ?? false;
 }

@@ -3,14 +3,28 @@ import type { ProviderEndpointSelect } from "@turborepo-boilerplate/db/schema/pr
 import type { RouteConfig } from "@x402/core/server";
 
 /**
- * Normalizes the gateway's `{*path}` wildcard into an upstream path.
+ * Normalizes the gateway's `{*path}` wildcard into a safe upstream path.
  *
  * Express 5 yields an **array** of segments for `{*path}`, so treating it as a
  * string comma-joins multi-segment routes (`/a/b/c` → `/a,b,c`) and nothing past
- * the first level ever matches. Leading slashes are collapsed at the same time:
- * `new URL("//evil.com/x", "https://api.good.com/v1")` resolves to
- * `https://evil.com/x`, so a request for `//evil.com/x` would otherwise be a
- * protocol-relative SSRF once the join is fixed.
+ * the first level ever matches.
+ *
+ * The result is also made incapable of escaping the provider's own base URL,
+ * because everything downstream — endpoint matching, x402's matcher and URL
+ * construction — trusts this value:
+ *
+ * - **Backslashes become slashes.** For `http(s)` the WHATWG URL parser treats
+ *   `\` exactly like `/`, so `/\evil.com/x` resolves to a *different origin*.
+ *   x402's own matcher rewrites `\` to `/` before matching, so a request could
+ *   be priced against one path and fetched from another host entirely.
+ * - **Empty segments collapse.** `//evil.com/x` is protocol-relative and would
+ *   likewise resolve to another origin.
+ * - **Dot segments are resolved away.** `..` would otherwise climb out of the
+ *   base URL's path prefix, letting the cheapest matching endpoint buy access to
+ *   any path on the upstream origin.
+ *
+ * A trailing slash is preserved: it cannot cause an escape and some upstreams
+ * distinguish `/x` from `/x/`.
  */
 export function resolveProxyPath(pathParam: unknown): string {
   const joined = Array.isArray(pathParam)
@@ -19,7 +33,24 @@ export function resolveProxyPath(pathParam: unknown): string {
       ? pathParam
       : "";
 
-  return `/${joined.replace(/^\/+/, "")}`;
+  const raw = joined.replace(/\\/g, "/");
+  const segments: string[] = [];
+
+  for (const segment of raw.split("/")) {
+    if (segment === "" || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+
+  const path = `/${segments.join("/")}`;
+  const keepsTrailingSlash = segments.length > 0 && raw.endsWith("/");
+
+  return keepsTrailingSlash ? `${path}/` : path;
 }
 
 /**
@@ -104,49 +135,37 @@ export function findMatchingEndpoint<
 }
 
 /**
- * Translates an OpenAPI path template into the placeholder syntax x402 understands.
+ * Builds the x402 route config for the one endpoint this request resolved to.
  *
- * x402's route matcher escapes `{` and `}` as regex literals — it only knows
- * `:param`, `[param]` and `*`. An untranslated `/users/{id}` therefore matched
- * nothing, x402 reported `no-payment-required`, and the endpoint was served for
- * free. For most real OpenAPI specs that is the majority of the surface.
- *
- * Note: `matchPath` also accepts a request that omits a trailing `{id?}` segment,
- * while `:id` here requires it. That divergence is unreachable today — endpoints
- * only ever come from `parseOpenApiSpec`, and OpenAPI has no optional path
- * parameters — and it fails closed (a 500, never a free response) if it ever is
- * reached. Registering endpoints by hand would need both keys emitted.
+ * Returned bare (not keyed by a route pattern) on purpose. x402 registers a bare
+ * config under the `"*"` pattern, which matches any method and path — and that is
+ * exactly right here, because the gateway has *already* matched and priced this
+ * request before calling x402. Handing x402 a pattern to re-match against was the
+ * original defect and an endless source of new ones: its matcher escapes `{`/`}`
+ * as regex literals (so OpenAPI templates matched nothing and were served free),
+ * and its `:param` substitution only accepts JS-identifier names, so ordinary
+ * spec paths like `/users/{account-id}` or `/v1/{api-version}/x` could never be
+ * expressed. With a wildcard there is no second matcher to disagree with ours.
  */
-export function toX402RouteKey(method: string, path: string): string {
-  const routePath = path.replace(/\{([^}?]+)\??\}/g, ":$1");
-  return `${method.toUpperCase()} ${routePath}`;
-}
-
-export function buildRoutesConfig(
-  endpoints: ProviderEndpointSelect[],
+export function buildRouteConfig(
+  endpoint: ProviderEndpointSelect,
   payTo: string,
   network: `${string}:${string}`
-): Record<string, RouteConfig> {
-  const routes: Record<string, RouteConfig> = {};
-
-  for (const endpoint of endpoints) {
-    if (!endpoint.priceUsdc) {
-      continue;
-    }
-
-    routes[toX402RouteKey(endpoint.method, endpoint.path)] = {
-      accepts: [
-        {
-          scheme: "exact",
-          price: toPriceAmount(endpoint.priceUsdc),
-          network,
-          payTo,
-        },
-      ],
-      description: endpoint.summary || endpoint.description || undefined,
-      mimeType: "application/json",
-    };
+): RouteConfig {
+  if (!endpoint.priceUsdc) {
+    throw new Error(`Endpoint ${endpoint.id} has no price configured`);
   }
 
-  return routes;
+  return {
+    accepts: [
+      {
+        scheme: "exact",
+        price: toPriceAmount(endpoint.priceUsdc),
+        network,
+        payTo,
+      },
+    ],
+    description: endpoint.summary || endpoint.description || undefined,
+    mimeType: "application/json",
+  };
 }

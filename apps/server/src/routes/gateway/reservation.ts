@@ -45,29 +45,14 @@ export async function reservePayment(
 }
 
 /**
- * Gives a reservation back, so the same signed payload may be presented again.
- *
- * Only safe when the request delivered *nothing* to the caller — an upstream that
- * never produced a response. If any upstream bytes reached the caller the
- * reservation must be retained (see `markPaymentUnsettled`), otherwise an
- * endpoint whose useful content sits behind a non-2xx status could be replayed
- * from a single signature indefinitely.
- */
-export async function releasePayment(paymentId: string): Promise<void> {
-  await db
-    .delete(paymentReceipt)
-    .where(
-      and(
-        eq(paymentReceipt.paymentId, paymentId),
-        eq(paymentReceipt.status, "pending")
-      )
-    );
-}
-
-/**
  * Burns a reservation without crediting anyone: the payload was spent on this
  * attempt but nothing settled on-chain, so nobody was charged. Retrying costs the
  * caller only a fresh signature.
+ *
+ * Reservations are never handed back. Releasing one whenever the upstream failed
+ * would turn a single signature into an unbounded supply of free upstream work,
+ * since the caller controls whether the upstream errors (a slow query, a
+ * redirect) and nothing settles on that path.
  */
 export async function markPaymentUnsettled(paymentId: string): Promise<void> {
   await db

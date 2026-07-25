@@ -16,13 +16,9 @@ import { getApiWithEndpoints } from "./api-cache";
 import { atomicToDecimalString } from "./money";
 import { derivePaymentKey } from "./payment-key";
 import { fetchUpstream, readUpstreamBody, sendUpstreamResponse } from "./proxy";
+import { markPaymentUnsettled, reservePayment } from "./reservation";
 import {
-  markPaymentUnsettled,
-  releasePayment,
-  reservePayment,
-} from "./reservation";
-import {
-  buildRoutesConfig,
+  buildRouteConfig,
   findMatchingEndpoint,
   resolveProxyPath,
 } from "./routing";
@@ -205,16 +201,12 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
 
     // 3. Ask x402 whether this request carries a valid payment.
     const network = getNetwork();
-    const routesConfig = buildRoutesConfig(
-      [matchedEndpoint],
-      getPayTo(),
-      network
-    );
+    const routeConfig = buildRouteConfig(matchedEndpoint, getPayTo(), network);
 
     // Edge case #13: reuse the singleton resource server, initialized once so the
     // facilitator's supported payment kinds are loaded.
     const resourceServer = await getInitializedResourceServer();
-    const httpServer = new x402HTTPResourceServer(resourceServer, routesConfig);
+    const httpServer = new x402HTTPResourceServer(resourceServer, routeConfig);
     const processResult = await httpServer.processHTTPRequest(
       buildRequestContext(req, proxyPath)
     );
@@ -233,9 +225,9 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
       return;
     }
 
-    // 5. Fail closed. A priced endpoint that x402 reports as free means our route
-    // key does not match the path we just matched ourselves — a configuration bug,
-    // not a free endpoint. Serving it would give the response away for nothing.
+    // 5. Fail closed. With a wildcard route config this should be unreachable,
+    // but a priced endpoint that x402 reports as free is a configuration bug, not
+    // a free endpoint — serving it would give the response away for nothing.
     if (processResult.type === "no-payment-required") {
       logGatewayError(
         req,
@@ -299,8 +291,13 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
       upstreamResponse = await fetchUpstream(req, api.baseUrl, proxyPath);
       upstreamBody = await readUpstreamBody(upstreamResponse);
     } catch (err) {
-      // Nothing was delivered, so the payload is safe to hand back for a retry.
-      await releasePayment(paymentKey);
+      // The reservation is burned, not released. Handing the payload back would
+      // make one signature an unbounded lever: anything that makes the upstream
+      // throw — a >30s response, a reset, a 3xx (refused by `redirect: "error"`)
+      // — could be replayed forever, with the provider doing the work every time
+      // and never being paid. Nothing settled, so retrying costs only a new
+      // signature.
+      await markPaymentUnsettled(paymentKey);
       await cancelVerifiedPayment(cancellationDispatcher, "handler_failed");
       logGatewayError(
         req,
@@ -309,7 +306,8 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
         502
       );
       res.status(502).json({
-        error: "Upstream unavailable. Payment was NOT settled — you can retry.",
+        error:
+          "Upstream unavailable. Payment was NOT settled — sign a new payment to retry.",
       });
       return;
     }

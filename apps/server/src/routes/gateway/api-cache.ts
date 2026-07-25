@@ -10,6 +10,14 @@ import { eq } from "drizzle-orm";
 /** Bounds memory to one entry per API. */
 const MAX_CACHE_SIZE = 1000;
 
+/**
+ * Backstop for the version key. `provider_api.updated_at` is a millisecond
+ * timestamp, so two edits committed inside the same millisecond produce the same
+ * version and the second would otherwise never be picked up. A short expiry keeps
+ * that window bounded without reintroducing minute-long stale pricing.
+ */
+const MAX_CACHE_AGE_MS = 5000;
+
 export type GatewayApi = {
   id: string;
   userId: string;
@@ -20,6 +28,7 @@ export type GatewayApi = {
 type CacheEntry = {
   /** `provider_api.updated_at`, bumped by every pricing or base-URL change. */
   version: number;
+  cachedAt: number;
   endpoints: ProviderEndpointSelect[];
 };
 
@@ -58,7 +67,11 @@ function lookupEndpoints(apiId: string) {
 
 function readCache(apiId: string, version: number) {
   const cached = endpointCache.get(apiId);
-  if (!cached || cached.version !== version) {
+  if (
+    !cached ||
+    cached.version !== version ||
+    Date.now() - cached.cachedAt > MAX_CACHE_AGE_MS
+  ) {
     return null;
   }
 
@@ -73,7 +86,7 @@ function writeCache(
   version: number,
   endpoints: ProviderEndpointSelect[]
 ) {
-  endpointCache.set(apiId, { version, endpoints });
+  endpointCache.set(apiId, { version, cachedAt: Date.now(), endpoints });
 
   if (endpointCache.size > MAX_CACHE_SIZE) {
     const oldest = endpointCache.keys().next().value;

@@ -193,21 +193,28 @@ export const updateProviderApiBaseUrlForUser = async (
 };
 
 /**
- * Whether an API has money attached to it. Both tables reference `provider_api`
- * with `ON DELETE RESTRICT`, so this decides whether a delete can succeed at all
- * — checking first lets callers explain why instead of surfacing a raw FK error.
+ * Whether any of these APIs has money attached to it.
+ *
+ * Both tables reference `provider_api` with `ON DELETE RESTRICT`, so this decides
+ * whether a delete can succeed at all — checking first lets callers explain why
+ * instead of surfacing a raw foreign-key error. Shared by API deletion and
+ * project deletion, which cascades into APIs and hits the same constraint.
  */
-const providerApiHasFinancialHistory = async (apiId: string) => {
+export const anyProviderApiHasFinancialHistory = async (apiIds: string[]) => {
+  if (apiIds.length === 0) {
+    return false;
+  }
+
   const [[entry], [receipt]] = await Promise.all([
     db
       .select({ id: ledgerEntry.id })
       .from(ledgerEntry)
-      .where(eq(ledgerEntry.apiId, apiId))
+      .where(inArray(ledgerEntry.apiId, apiIds))
       .limit(1),
     db
       .select({ id: paymentReceipt.id })
       .from(paymentReceipt)
-      .where(eq(paymentReceipt.apiId, apiId))
+      .where(inArray(paymentReceipt.apiId, apiIds))
       .limit(1),
   ]);
 
@@ -234,7 +241,7 @@ export const deleteProviderApiForUser = async (input: {
     return "not-found";
   }
 
-  if (await providerApiHasFinancialHistory(input.apiId)) {
+  if (await anyProviderApiHasFinancialHistory([input.apiId])) {
     return "has-history";
   }
 

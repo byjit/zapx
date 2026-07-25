@@ -3,7 +3,6 @@ import * as schema from "@turborepo-boilerplate/db/schema/auth";
 import {
   resend,
   sendAdminSlackNotification,
-  sendOrganizationInvitation,
   WelcomeEmail,
 } from "@turborepo-boilerplate/services";
 import { betterAuth } from "better-auth";
@@ -12,7 +11,6 @@ import type { TestHelpers } from "better-auth/plugins";
 import {
   admin as adminPlugin,
   multiSession,
-  organization,
   testUtils,
 } from "better-auth/plugins";
 import { APP_NAME, SYSTEM_ADMIN_EMAIL, SYSTEM_ADMIN_ID } from "./constant";
@@ -75,22 +73,18 @@ export const auth = betterAuth({
     },
     useSecureCookies: env.NODE_ENV === "production",
   },
+  // The `organization` plugin is deliberately absent from this list.
+  //
+  // Spec §6.0 defines the tenant as the user ("User = Provider — one balance per
+  // user") and no financial table references an organization. While the plugin
+  // was registered, `POST /api/auth/organization/invite-member` was live for any
+  // authenticated user and sent a real email, so a teammate could accept an
+  // invitation and then find no projects, APIs or balance. Unregistering the
+  // tRPC router alone did not close that — the plugin exposes its own REST
+  // surface. The `organization`/`member`/`invitation` tables and the invitation
+  // email template are kept for the day multi-tenant ownership is actually
+  // specced.
   plugins: [
-    organization({
-      // Invitation expires in 48 hours (default)
-      invitationExpiresIn: 48 * 60 * 60,
-      cancelPendingInvitationsOnReInvite: true,
-      async sendInvitationEmail(data) {
-        const inviteLink = `${appOrigin}/accept-invitation/${data.id}`;
-        await sendOrganizationInvitation({
-          email: data.email,
-          invitedByUsername: data.inviter.user.name || "A user",
-          invitedByEmail: data.inviter.user.email,
-          teamName: data.organization.name,
-          inviteLink,
-        });
-      },
-    }),
     // polar({
     //   client: polarClient,
     //   createCustomerOnSignUp: true,

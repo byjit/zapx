@@ -22,12 +22,6 @@ const PRIVATE_IP_PATTERNS = [
   /^100\.100\.100\.200$/,
   // IPv4 zero
   /^0\.0\.0\.0$/,
-  // IPv4-mapped/compatible IPv6 carrying a loopback or private address, e.g.
-  // `::ffff:127.0.0.1`. WHATWG URL keeps these in textual form.
-  /^::(?:ffff:)?(?:127|10|0)\./,
-  /^::(?:ffff:)?192\.168\./,
-  /^::(?:ffff:)?169\.254\./,
-  /^::(?:ffff:)?172\.(?:1[6-9]|2\d|3[0-1])\./,
 ];
 
 const BLOCKED_HOSTNAMES = new Set([
@@ -72,24 +66,123 @@ function unwrapIpv6(hostname: string): string | null {
     : null;
 }
 
+const HEXTET_COUNT = 8;
+const HEXTET_PATTERN = /^[0-9a-f]{1,4}$/;
+
+function parseHextetGroup(segment: string): number[] | null {
+  if (segment === "") {
+    return [];
+  }
+
+  const groups: number[] = [];
+
+  for (const piece of segment.split(":")) {
+    // A trailing dotted-quad, as in `::ffff:127.0.0.1`.
+    if (piece.includes(".")) {
+      const octets = piece.split(".").map(Number);
+      const isIpv4 =
+        octets.length === 4 &&
+        octets.every(
+          (octet) => Number.isInteger(octet) && octet >= 0 && octet <= 255
+        );
+      if (!isIpv4) {
+        return null;
+      }
+      groups.push(
+        ((octets[0] as number) << 8) | (octets[1] as number),
+        ((octets[2] as number) << 8) | (octets[3] as number)
+      );
+      continue;
+    }
+
+    if (!HEXTET_PATTERN.test(piece)) {
+      return null;
+    }
+    groups.push(Number.parseInt(piece, 16));
+  }
+
+  return groups;
+}
+
 /**
- * Whether a bare IPv6 address is loopback, unspecified, unique-local (`fc00::/7`)
- * or link-local (`fe80::/10`) — the IPv6 equivalents of the blocked IPv4 ranges.
+ * Expands an IPv6 address to its eight 16-bit groups, resolving `::`.
+ *
+ * Textual matching is not an option: the WHATWG URL parser rewrites
+ * `[::ffff:127.0.0.1]` to `[::ffff:7f00:1]`, so any pattern written against the
+ * dotted-quad form silently never fires.
+ */
+function expandIpv6(address: string): number[] | null {
+  const parts = address.toLowerCase().split("::");
+  if (parts.length > 2) {
+    return null;
+  }
+
+  const head = parseHextetGroup(parts[0] ?? "");
+  const tail = parts.length === 2 ? parseHextetGroup(parts[1] ?? "") : [];
+  if (!(head && tail)) {
+    return null;
+  }
+
+  if (parts.length === 1) {
+    return head.length === HEXTET_COUNT ? head : null;
+  }
+
+  const elided = HEXTET_COUNT - head.length - tail.length;
+  return elided < 1
+    ? null
+    : [...head, ...new Array<number>(elided).fill(0), ...tail];
+}
+
+function isPrivateIpv4(address: string): boolean {
+  return PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(address));
+}
+
+/**
+ * Whether an IPv6 address is loopback, unspecified, unique-local (`fc00::/7`),
+ * link-local (`fe80::/10`), or carries a blocked IPv4 address in the
+ * IPv4-mapped/compatible `::ffff:0:0/96` and `::/96` ranges.
  */
 function isPrivateIpv6(address: string): boolean {
-  if (address === "::1" || address === "::") {
-    return true;
+  const hextets = expandIpv6(address);
+  if (!hextets) {
+    return false;
   }
 
-  const firstHextet = address.split(":")[0] ?? "";
+  // `expandIpv6` always returns exactly eight groups.
+  const first = hextets[0] as number;
+  const fifth = hextets[5] as number;
+  const sixth = hextets[6] as number;
+  const seventh = hextets[7] as number;
 
   // fc00::/7 — unique local addresses (fc.. and fd..).
-  if (/^f[cd]/.test(firstHextet)) {
+  if ((first & 0xfe_00) === 0xfc_00) {
     return true;
   }
 
-  // fe80::/10 — link-local (fe80 through febf).
-  return /^fe[89ab]/.test(firstHextet);
+  // fe80::/10 — link-local.
+  if ((first & 0xff_c0) === 0xfe_80) {
+    return true;
+  }
+
+  // `::/96` and `::ffff:0:0/96` embed an IPv4 address in the last two groups.
+  // This also covers `::` (unspecified) and `::1` (loopback).
+  const isIpv4Embedded =
+    hextets.slice(0, 5).every((group) => group === 0) &&
+    (fifth === 0xff_ff || fifth === 0);
+
+  if (!isIpv4Embedded) {
+    return false;
+  }
+
+  const embedded = [
+    sixth >> 8,
+    sixth & 0xff,
+    seventh >> 8,
+    seventh & 0xff,
+  ].join(".");
+
+  // `::` and `::1` are 0.0.0.0 and 0.0.0.1 in this form; both are unroutable.
+  return (sixth === 0 && seventh <= 1) || isPrivateIpv4(embedded);
 }
 
 export function validateBaseUrl(url: string): {
@@ -136,15 +229,12 @@ export function validateBaseUrl(url: string): {
     };
   }
 
-  // Check if hostname is a raw IP address (IPv4, or IPv4 mapped into IPv6)
-  const ipCandidate = ipv6 ?? hostname;
-  for (const pattern of PRIVATE_IP_PATTERNS) {
-    if (pattern.test(ipCandidate)) {
-      return {
-        valid: false,
-        reason: "URL must not point to private or internal IP addresses",
-      };
-    }
+  // Check if the hostname is a raw private IPv4 address
+  if (isPrivateIpv4(hostname)) {
+    return {
+      valid: false,
+      reason: "URL must not point to private or internal IP addresses",
+    };
   }
 
   // Block internal-only TLDs
