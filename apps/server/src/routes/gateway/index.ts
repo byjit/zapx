@@ -1,175 +1,141 @@
-import { db } from "@turborepo-boilerplate/db";
-import { user } from "@turborepo-boilerplate/db/schema/auth";
-import { paymentReceipt } from "@turborepo-boilerplate/db/schema/payment-receipt";
-import { providerApi } from "@turborepo-boilerplate/db/schema/provider-api";
-import { providerEndpoint } from "@turborepo-boilerplate/db/schema/provider-endpoint";
-import type { RouteConfig } from "@x402/core/server";
+import { randomUUID } from "node:crypto";
+import { toPriceAmount } from "@turborepo-boilerplate/api/pricing";
+import type { x402ResourceServer } from "@x402/core/server";
 import { x402HTTPResourceServer } from "@x402/core/server";
-import { eq } from "drizzle-orm";
+import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import express, { type Request, type Response, type Router } from "express";
 import { creditProvider } from "../../services/ledger";
 import {
+  getInitializedResourceServer,
   getNetwork,
   getPayTo,
   getPlatformFeePercent,
-  getResourceServer,
 } from "../../services/payment-verification";
 import { logger } from "../../utils/logger";
+import { getApiWithEndpoints } from "./api-cache";
+import { atomicToDecimalString } from "./money";
+import { derivePaymentKey } from "./payment-key";
+import { fetchUpstream, readUpstreamBody, sendUpstreamResponse } from "./proxy";
+import { markPaymentUnsettled, reservePayment } from "./reservation";
+import {
+  buildRouteConfig,
+  findMatchingEndpoint,
+  resolveProxyPath,
+} from "./routing";
 
-// ---------------------------------------------------------------------------
-// Edge case #8: LRU cache with bounded size
-// ---------------------------------------------------------------------------
-const MAX_CACHE_SIZE = 1000;
-const CACHE_TTL_MS = 60_000; // 1 minute
+/** Reason codes accepted by x402's verified-payment cancellation dispatcher. */
+type CancelReason = "handler_threw" | "handler_failed" | "after_verify_aborted";
 
-type CachedApiData = {
-  api: NonNullable<Awaited<ReturnType<typeof lookupApi>>>;
-  endpoints: Awaited<ReturnType<typeof lookupEndpoints>>;
-  ownerBanned: boolean;
-  cachedAt: number;
+type CancellationDispatcher = {
+  cancel(options: { reason: CancelReason }): Promise<void>;
 };
-
-const apiCache = new Map<string, CachedApiData>();
-
-function evictLRU() {
-  if (apiCache.size <= MAX_CACHE_SIZE) return;
-  // Map iterates in insertion order — delete the oldest entry
-  const oldest = apiCache.keys().next().value;
-  if (oldest) apiCache.delete(oldest);
-}
-
-// Edge case #14: Export cache invalidation for use by tRPC routers
-export function invalidateApiCache(apiId: string) {
-  apiCache.delete(apiId);
-}
-
-// ---------------------------------------------------------------------------
-// Edge case #9: Configurable upstream timeout
-// ---------------------------------------------------------------------------
-const UPSTREAM_TIMEOUT_MS = 30_000;
 
 export const gatewayRouter: Router = express.Router();
 
-// Edge case #11: Parse raw body for gateway routes so we can forward
-// binary/multipart bodies without corruption from express.json()
+// Edge case #11: parse the raw body for gateway routes so binary/multipart
+// bodies are forwarded without corruption from express.json().
 gatewayRouter.use(express.raw({ type: "*/*", limit: "10mb" }));
 
-// ---------------------------------------------------------------------------
-// Database lookups
-// ---------------------------------------------------------------------------
-
-async function lookupApi(apiId: string) {
-  // Edge case #6: Join user table to check banned status
-  const [result] = await db
-    .select({
-      id: providerApi.id,
-      userId: providerApi.userId,
-      projectId: providerApi.projectId,
-      name: providerApi.name,
-      baseUrl: providerApi.baseUrl,
-      openapiSpec: providerApi.openapiSpec,
-      specVersion: providerApi.specVersion,
-      createdAt: providerApi.createdAt,
-      updatedAt: providerApi.updatedAt,
-      ownerBanned: user.banned,
-    })
-    .from(providerApi)
-    .innerJoin(user, eq(providerApi.userId, user.id))
-    .where(eq(providerApi.id, apiId))
-    .limit(1);
-  return result ?? null;
+function logGatewayError(
+  req: Request,
+  requestId: string,
+  message: string,
+  statusCode: number,
+  stack?: string
+) {
+  logger.error({
+    type: "error",
+    message,
+    stack,
+    requestId,
+    method: req.method,
+    url: req.originalUrl,
+    statusCode,
+  });
 }
 
-async function lookupEndpoints(apiId: string) {
-  return db
-    .select()
-    .from(providerEndpoint)
-    .where(eq(providerEndpoint.apiId, apiId));
-}
-
-async function getCachedApiData(apiId: string) {
-  const cached = apiCache.get(apiId);
-  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
-    // Move to end to mark as recently used (LRU)
-    apiCache.delete(apiId);
-    apiCache.set(apiId, cached);
-    return cached;
+/**
+ * Tells x402 a verified payment will not be settled. Best-effort: a failure here
+ * must not change what the caller sees, since the money outcome is already decided.
+ */
+async function cancelVerifiedPayment(
+  dispatcher: CancellationDispatcher,
+  reason: CancelReason
+) {
+  try {
+    await dispatcher.cancel({ reason });
+  } catch {
+    // Nothing actionable — no payment was settled either way.
   }
+}
 
-  const api = await lookupApi(apiId);
-  if (!api) return null;
-
-  const endpoints = await lookupEndpoints(apiId);
-  const data: CachedApiData = {
-    api,
-    endpoints,
-    ownerBanned: api.ownerBanned ?? false,
-    cachedAt: Date.now(),
+function buildRequestContext(req: Request, proxyPath: string) {
+  return {
+    adapter: {
+      getHeader: (name: string) => {
+        const key = name.toLowerCase();
+        const value = req.headers[key];
+        if (typeof value === "string") {
+          return value;
+        }
+        if (Array.isArray(value)) {
+          return value[0];
+        }
+        // x402 only reads `PAYMENT-SIGNATURE`; alias the v1 `X-PAYMENT` header so
+        // older clients at least reach verification instead of 402-looping.
+        if (key === "payment-signature") {
+          const legacy = req.headers["x-payment"];
+          return typeof legacy === "string" ? legacy : undefined;
+        }
+      },
+      getMethod: () => req.method,
+      getPath: () => proxyPath,
+      getUrl: () => `${req.protocol}://${req.get("host")}${req.originalUrl}`,
+      getAcceptHeader: () => (req.headers.accept as string) || "",
+      getUserAgent: () => (req.headers["user-agent"] as string) || "",
+      getQueryParams: () => req.query as Record<string, string | string[]>,
+      getQueryParam: (name: string) =>
+        req.query[name] as string | string[] | undefined,
+      getBody: () => req.body,
+    },
+    path: proxyPath,
+    method: req.method,
   };
-  apiCache.set(apiId, data);
-  evictLRU();
-  return data;
 }
 
-// ---------------------------------------------------------------------------
-// Route config builder
-// ---------------------------------------------------------------------------
-
-function buildRoutesConfig(
-  endpoints: Awaited<ReturnType<typeof lookupEndpoints>>,
-  payTo: string,
-  network: `${string}:${string}`
-): Record<string, RouteConfig> {
-  const routes: Record<string, RouteConfig> = {};
-
-  for (const endpoint of endpoints) {
-    if (!endpoint.priceUsdc) continue;
-
-    const price = endpoint.priceUsdc.replace(/^\$/, "");
-    const routeKey = `${endpoint.method.toUpperCase()} ${endpoint.path}`;
-
-    routes[routeKey] = {
-      accepts: [
-        {
-          scheme: "exact",
-          price,
-          network,
-          payTo,
-        },
-      ],
-      description: endpoint.summary || endpoint.description || undefined,
-      mimeType: "application/json",
-    };
+/**
+ * Converts an x402 atomic amount into the decimal string the ledger stores.
+ * `settledAmount` wins when the facilitator reports one (schemes where the
+ * settled amount can differ from the authorized maximum).
+ */
+function toDecimalAmount(
+  resourceServer: x402ResourceServer,
+  requirements: PaymentRequirements,
+  settledAmount?: string
+): string | null {
+  const atomic = settledAmount ?? requirements.amount;
+  if (typeof atomic !== "string") {
+    return null;
   }
 
-  return routes;
+  return atomicToDecimalString(
+    atomic,
+    resourceServer.getAssetDecimalsForRequirements(requirements)
+  );
 }
 
-function generateRequestId(): string {
-  return `gw_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
-
-// ---------------------------------------------------------------------------
-// Edge case #5: Idempotency — check if payment already settled
-// ---------------------------------------------------------------------------
-
-async function findExistingReceipt(paymentId: string) {
-  const [existing] = await db
-    .select()
-    .from(paymentReceipt)
-    .where(eq(paymentReceipt.paymentId, paymentId))
-    .limit(1);
-  return existing ?? null;
-}
-
-// ---------------------------------------------------------------------------
-// Edge case #1: Retry ledger credit with backoff on failure
-// ---------------------------------------------------------------------------
-
+/**
+ * Edge case #1: retry the ledger credit with backoff.
+ *
+ * Safe to retry because `creditProvider` claims the payment's reservation inside
+ * the crediting transaction: an attempt whose commit succeeded but whose response
+ * was lost reports `already-settled` on the next try rather than double-crediting.
+ */
 async function creditWithRetry(
   input: Parameters<typeof creditProvider>[0],
+  requestId: string,
   maxRetries = 3
-) {
+): Promise<boolean> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await creditProvider(input);
@@ -178,13 +144,13 @@ async function creditWithRetry(
       logger.error({
         type: "error",
         message: `Ledger credit attempt ${attempt}/${maxRetries} failed: ${err instanceof Error ? err.message : "Unknown"}`,
-        requestId: input.requestId,
+        requestId,
         method: "POST",
         url: "ledger.creditProvider",
         statusCode: 500,
       });
       if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, 100 * 2 ** attempt));
+        await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** attempt));
       }
     }
   }
@@ -197,30 +163,30 @@ async function creditWithRetry(
 
 gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
   const apiId = req.params.apiId as string;
-  const wildcardParam = (req.params as Record<string, string>).path || "";
-  const proxyPath = `/${wildcardParam}`;
+  const proxyPath = resolveProxyPath(req.params.path);
+  const requestId = randomUUID();
 
   try {
-    // 1. Lookup API and endpoints
-    const data = await getCachedApiData(apiId);
+    // 1. Resolve the API and its endpoints.
+    const data = await getApiWithEndpoints(apiId);
     if (!data) {
       res.status(404).json({ error: "API not found" });
       return;
     }
 
-    const { api, endpoints, ownerBanned } = data;
+    const { api, endpoints } = data;
 
-    // Edge case #6: Reject if API owner is banned
-    if (ownerBanned) {
+    // Edge case #6: reject if the API owner is banned.
+    if (api.ownerBanned) {
       res.status(403).json({ error: "This API is currently unavailable" });
       return;
     }
 
-    // 2. Find matching endpoint
-    const method = req.method.toUpperCase();
-    const matchedEndpoint = endpoints.find(
-      (ep) =>
-        ep.method.toUpperCase() === method && matchPath(ep.path, proxyPath)
+    // 2. Find the endpoint that should serve this request.
+    const matchedEndpoint = findMatchingEndpoint(
+      endpoints,
+      req.method,
+      proxyPath
     );
 
     if (!matchedEndpoint) {
@@ -233,42 +199,19 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
       return;
     }
 
-    // 3. Build x402 route config and check payment
-    const payTo = getPayTo();
-    // Edge case #12: Use configurable network
+    // 3. Ask x402 whether this request carries a valid payment.
     const network = getNetwork();
-    const routesConfig = buildRoutesConfig([matchedEndpoint], payTo, network);
+    const routeConfig = buildRouteConfig(matchedEndpoint, getPayTo(), network);
 
-    // Edge case #13: Reuse singleton resource server
-    const resourceServer = getResourceServer();
+    // Edge case #13: reuse the singleton resource server, initialized once so the
+    // facilitator's supported payment kinds are loaded.
+    const resourceServer = await getInitializedResourceServer();
+    const httpServer = new x402HTTPResourceServer(resourceServer, routeConfig);
+    const processResult = await httpServer.processHTTPRequest(
+      buildRequestContext(req, proxyPath)
+    );
 
-    const httpServer = new x402HTTPResourceServer(resourceServer, routesConfig);
-
-    // Process the payment request
-    const requestContext = {
-      adapter: {
-        getHeader: (name: string) =>
-          req.headers[name.toLowerCase()] as string | undefined,
-        getMethod: () => req.method,
-        getPath: () => proxyPath,
-        getUrl: () => `${req.protocol}://${req.get("host")}${req.originalUrl}`,
-        getAcceptHeader: () => (req.headers.accept as string) || "",
-        getUserAgent: () => (req.headers["user-agent"] as string) || "",
-        getQueryParams: () => req.query as Record<string, string | string[]>,
-        getQueryParam: (name: string) =>
-          req.query[name] as string | string[] | undefined,
-        getBody: () => req.body,
-      },
-      path: proxyPath,
-      method: req.method,
-      paymentHeader:
-        (req.headers["payment-signature"] as string) ||
-        (req.headers["x-payment"] as string),
-    };
-
-    const processResult = await httpServer.processHTTPRequest(requestContext);
-
-    // 4. No payment provided — return 402
+    // 4. Missing or invalid payment — return the 402 challenge.
     if (processResult.type === "payment-error") {
       const { status, headers, body, isHtml } = processResult.response;
       for (const [key, value] of Object.entries(headers)) {
@@ -282,64 +225,130 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
       return;
     }
 
-    // 5. No payment required
+    // 5. Fail closed. With a wildcard route config this should be unreachable,
+    // but a priced endpoint that x402 reports as free is a configuration bug, not
+    // a free endpoint — serving it would give the response away for nothing.
     if (processResult.type === "no-payment-required") {
-      await proxyToUpstream(req, res, api.baseUrl, proxyPath);
+      logGatewayError(
+        req,
+        requestId,
+        `Route config mismatch: ${matchedEndpoint.method} ${matchedEndpoint.path} is priced at ${matchedEndpoint.priceUsdc} but x402 did not require payment for ${proxyPath}`,
+        500
+      );
+      res.status(500).json({ error: "Endpoint pricing is misconfigured" });
       return;
     }
 
-    // 6. Payment verified — proxy to upstream FIRST
-    const { paymentPayload, paymentRequirements } = processResult;
+    const { paymentPayload, paymentRequirements, cancellationDispatcher } =
+      processResult;
 
-    // Edge case #2: Proxy FIRST, only settle if upstream returns 2xx
+    // 6. Reserve the payment before any upstream work. This is what stops one
+    // signature from serving unlimited requests.
+    const paymentKey = derivePaymentKey(paymentPayload as PaymentPayload);
+    if (!paymentKey) {
+      await cancelVerifiedPayment(cancellationDispatcher, "handler_failed");
+      logGatewayError(
+        req,
+        requestId,
+        `Unrecognized payment payload shape for scheme ${paymentRequirements.scheme} on ${paymentRequirements.network}`,
+        500
+      );
+      res.status(500).json({ error: "Unsupported payment payload" });
+      return;
+    }
+
+    const requiredAmount =
+      toDecimalAmount(resourceServer, paymentRequirements) ??
+      toPriceAmount(matchedEndpoint.priceUsdc);
+
+    const reserved = await reservePayment({
+      paymentId: paymentKey,
+      userId: api.userId,
+      apiId: api.id,
+      endpointId: matchedEndpoint.id,
+      amount: requiredAmount,
+      networkId: network,
+    });
+
+    if (!reserved) {
+      await cancelVerifiedPayment(
+        cancellationDispatcher,
+        "after_verify_aborted"
+      );
+      res.status(409).json({
+        error:
+          "This payment has already been used. Sign a new payment to retry this request.",
+      });
+      return;
+    }
+
+    // 7. Call the upstream and read it fully. Edge case #2: settle only on a 2xx —
+    // and only once the whole body is in hand, so a connection that dies mid-body
+    // costs the caller nothing.
     let upstreamResponse: globalThis.Response;
+    let upstreamBody: Buffer;
     try {
       upstreamResponse = await fetchUpstream(req, api.baseUrl, proxyPath);
+      upstreamBody = await readUpstreamBody(upstreamResponse);
     } catch (err) {
-      // Upstream failed — do NOT settle payment, let client retry
-      logger.error({
-        type: "error",
-        message: `Upstream failed: ${err instanceof Error ? err.message : "Unknown"}`,
-        requestId: "unknown",
-        method: req.method,
-        url: req.originalUrl,
-        statusCode: 502,
-      });
+      // The reservation is burned, not released. Handing the payload back would
+      // make one signature an unbounded lever: anything that makes the upstream
+      // throw — a >30s response, a reset, a 3xx (refused by `redirect: "error"`)
+      // — could be replayed forever, with the provider doing the work every time
+      // and never being paid. Nothing settled, so retrying costs only a new
+      // signature.
+      await markPaymentUnsettled(paymentKey);
+      await cancelVerifiedPayment(cancellationDispatcher, "handler_failed");
+      logGatewayError(
+        req,
+        requestId,
+        `Upstream failed: ${err instanceof Error ? err.message : "Unknown"}`,
+        502
+      );
       res.status(502).json({
-        error: "Upstream unavailable. Payment was NOT settled — you can retry.",
+        error:
+          "Upstream unavailable. Payment was NOT settled — sign a new payment to retry.",
       });
       return;
     }
 
     if (!upstreamResponse.ok) {
-      // Upstream returned non-2xx — do NOT settle, return upstream error
-      const upstreamBody = await upstreamResponse.arrayBuffer();
-      forwardUpstreamHeaders(res, upstreamResponse);
-      res.status(upstreamResponse.status);
-      res.send(Buffer.from(upstreamBody));
+      // The caller receives the upstream body, so the payload is spent even though
+      // nothing settled — otherwise an endpoint whose useful content sits behind a
+      // non-2xx status could be replayed forever from one signature.
+      await markPaymentUnsettled(paymentKey);
+      await cancelVerifiedPayment(cancellationDispatcher, "handler_failed");
+      sendUpstreamResponse(res, upstreamResponse, upstreamBody);
       return;
     }
 
-    // Edge case #5: Check for existing payment receipt (idempotency)
-    const paymentId =
-      (req.headers["payment-identifier"] as string) || generateRequestId();
-    const existingReceipt = await findExistingReceipt(paymentId);
-    if (existingReceipt) {
-      // Already settled — return the upstream response without re-settling
-      const upstreamBody = await upstreamResponse.arrayBuffer();
-      forwardUpstreamHeaders(res, upstreamResponse);
-      res.status(upstreamResponse.status);
-      res.send(Buffer.from(upstreamBody));
+    // 8. Settle on-chain.
+    let settleResult: Awaited<ReturnType<typeof httpServer.processSettlement>>;
+    try {
+      settleResult = await httpServer.processSettlement(
+        paymentPayload,
+        paymentRequirements
+      );
+    } catch (err) {
+      // The facilitator itself errored, so whether the transfer landed is
+      // unknown. The reservation stays `pending` on purpose: marking it failed
+      // would assert something we cannot verify, and the caller receives no
+      // content, so nothing is given away either way.
+      logGatewayError(
+        req,
+        requestId,
+        `RECONCILIATION NEEDED: settlement outcome unknown — the facilitator errored for paymentId=${paymentKey}: ${err instanceof Error ? err.message : "Unknown"}`,
+        502
+      );
+      res.status(502).json({
+        error:
+          "Settlement could not be confirmed. Do not retry this payment — contact support if you were charged.",
+      });
       return;
     }
-
-    // 7. Settle payment after successful upstream response
-    const settleResult = await httpServer.processSettlement(
-      paymentPayload,
-      paymentRequirements
-    );
 
     if (!settleResult.success) {
+      await markPaymentUnsettled(paymentKey);
       for (const [key, value] of Object.entries(settleResult.headers)) {
         res.setHeader(key, value);
       }
@@ -348,231 +357,55 @@ gatewayRouter.all("/:apiId/{*path}", async (req: Request, res: Response) => {
       return;
     }
 
-    // 8. Settlement succeeded — credit provider ledger
-    const requestId = paymentId;
-    const txHash = settleResult.transaction || "";
+    // 9. Credit the provider for what was actually settled, not for the price we
+    // happened to have cached.
+    const settledAmount =
+      toDecimalAmount(
+        resourceServer,
+        paymentRequirements,
+        settleResult.amount
+      ) ?? requiredAmount;
 
-    // Edge case #1: Retry ledger credit on failure
-    const creditSuccess = await creditWithRetry({
-      userId: api.userId,
-      apiId: api.id,
-      endpointId: matchedEndpoint.id,
-      amount: matchedEndpoint.priceUsdc.replace(/^\$/, ""),
-      platformFeePercent: getPlatformFeePercent(),
-      requestId,
-      txHash,
-    });
-
-    // Record payment receipt (for idempotency and reconciliation)
-    try {
-      await db.insert(paymentReceipt).values({
-        paymentId: requestId,
-        requestId,
-        txHash: txHash || null,
+    const credited = await creditWithRetry(
+      {
+        paymentId: paymentKey,
+        userId: api.userId,
+        apiId: api.id,
+        endpointId: matchedEndpoint.id,
+        amount: settledAmount,
+        platformFeePercent: getPlatformFeePercent(),
+        txHash: settleResult.transaction || "",
         networkId: settleResult.network || network,
-        amount: matchedEndpoint.priceUsdc.replace(/^\$/, ""),
-        status: creditSuccess ? "settled" : "pending",
-      });
-    } catch (receiptError) {
-      logger.error({
-        type: "error",
-        message: `Payment receipt insert failed: ${receiptError instanceof Error ? receiptError.message : "Unknown"}`,
+      },
+      requestId
+    );
+
+    if (!credited) {
+      // The receipt stays `pending`, which is the reconciliation queue: money is
+      // on-chain in the platform wallet but not yet attributed to the provider.
+      logGatewayError(
+        req,
         requestId,
-        method: req.method,
-        url: req.originalUrl,
-        statusCode: 500,
-      });
+        `RECONCILIATION NEEDED: payment settled (txHash=${settleResult.transaction}) but the ledger credit failed after retries. userId=${api.userId}, amount=${settledAmount}, paymentId=${paymentKey}`,
+        500
+      );
     }
 
-    if (!creditSuccess) {
-      // Log for manual reconciliation — payment settled on-chain but ledger not credited
-      logger.error({
-        type: "error",
-        message: `RECONCILIATION NEEDED: Payment settled (txHash=${txHash}) but ledger credit failed after retries. userId=${api.userId}, amount=${matchedEndpoint.priceUsdc}, requestId=${requestId}`,
-        requestId,
-        method: req.method,
-        url: req.originalUrl,
-        statusCode: 500,
-      });
-    }
-
-    // 9. Return upstream response with payment response headers
+    // 10. Return the upstream response with the settlement headers.
     for (const [key, value] of Object.entries(settleResult.headers)) {
       res.setHeader(key, value);
     }
-
-    // Edge case #21: Forward all upstream response headers
-    forwardUpstreamHeaders(res, upstreamResponse);
-
-    res.status(upstreamResponse.status);
-    const upstreamBody = await upstreamResponse.arrayBuffer();
-    res.send(Buffer.from(upstreamBody));
+    sendUpstreamResponse(res, upstreamResponse, upstreamBody);
   } catch (error) {
-    logger.error({
-      type: "error",
-      message: `Gateway error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      stack: error instanceof Error ? error.stack : undefined,
-      requestId: "unknown",
-      method: req.method,
-      url: req.originalUrl,
-      statusCode: 502,
-    });
-    res.status(502).json({ error: "Gateway error" });
+    logGatewayError(
+      req,
+      requestId,
+      `Gateway error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      502,
+      error instanceof Error ? error.stack : undefined
+    );
+    if (!res.headersSent) {
+      res.status(502).json({ error: "Gateway error" });
+    }
   }
 });
-
-// ---------------------------------------------------------------------------
-// Edge case #21: Forward upstream response headers (except hop-by-hop)
-// ---------------------------------------------------------------------------
-
-const HOP_BY_HOP_HEADERS = new Set([
-  "connection",
-  "keep-alive",
-  "proxy-authenticate",
-  "proxy-authorization",
-  "te",
-  "trailers",
-  "transfer-encoding",
-  "upgrade",
-  // Also skip payment headers (we set our own)
-  "payment-required",
-  "payment-response",
-  "payment-signature",
-  "x-payment",
-  "x-payment-response",
-]);
-
-function forwardUpstreamHeaders(res: Response, upstream: globalThis.Response) {
-  upstream.headers.forEach((value, key) => {
-    if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
-      res.setHeader(key, value);
-    }
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Proxy helpers
-// ---------------------------------------------------------------------------
-
-async function proxyToUpstream(
-  req: Request,
-  res: Response,
-  baseUrl: string,
-  path: string
-) {
-  try {
-    const upstream = await fetchUpstream(req, baseUrl, path);
-    forwardUpstreamHeaders(res, upstream);
-    res.status(upstream.status);
-    const body = await upstream.arrayBuffer();
-    res.send(Buffer.from(body));
-  } catch {
-    res.status(502).json({ error: "Upstream unavailable" });
-  }
-}
-
-async function fetchUpstream(
-  req: Request,
-  baseUrl: string,
-  path: string
-): Promise<globalThis.Response> {
-  // Build upstream URL
-  const url = new URL(path, baseUrl);
-
-  // Edge case #24: Use req.query directly instead of re-parsing originalUrl
-  for (const [key, value] of Object.entries(req.query)) {
-    if (typeof value === "string") {
-      url.searchParams.append(key, value);
-    } else if (Array.isArray(value)) {
-      for (const v of value) {
-        if (typeof v === "string") url.searchParams.append(key, v);
-      }
-    }
-  }
-
-  // Build headers — strip payment and hop-by-hop headers
-  const forwardHeaders = new Headers();
-  const skipHeaders = new Set([
-    "host",
-    "connection",
-    "keep-alive",
-    "transfer-encoding",
-    "payment-signature",
-    "payment-required",
-    "x-payment",
-    "x-payment-response",
-  ]);
-
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (!skipHeaders.has(key.toLowerCase()) && typeof value === "string") {
-      forwardHeaders.set(key, value);
-    }
-  }
-
-  // Build request options
-  const init: RequestInit = {
-    method: req.method,
-    headers: forwardHeaders,
-    // Edge case #9: Abort if upstream doesn't respond within timeout
-    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-  };
-
-  // Edge case #11: Forward raw body without re-serializing
-  if (["POST", "PUT", "PATCH"].includes(req.method.toUpperCase()) && req.body) {
-    if (Buffer.isBuffer(req.body)) {
-      init.body = req.body;
-    } else if (typeof req.body === "string") {
-      init.body = req.body;
-    } else {
-      // Fallback for parsed JSON bodies
-      init.body = JSON.stringify(req.body);
-    }
-  }
-
-  return fetch(url.toString(), init);
-}
-
-// ---------------------------------------------------------------------------
-// Edge case #10: Path matching with wildcard support
-// ---------------------------------------------------------------------------
-
-function matchPath(pattern: string, actual: string): boolean {
-  const normalizedPattern = pattern.replace(/\/+$/, "") || "/";
-  const normalizedActual = actual.replace(/\/+$/, "") || "/";
-
-  // Exact match
-  if (normalizedPattern === normalizedActual) return true;
-
-  // Wildcard: /files/** or /files/*
-  if (normalizedPattern.endsWith("/**") || normalizedPattern.endsWith("/*")) {
-    const prefix = normalizedPattern.replace(/\/\*\*?$/, "");
-    return (
-      normalizedActual.startsWith(prefix + "/") || normalizedActual === prefix
-    );
-  }
-
-  // Path parameter matching: /users/{id} or /users/:id or /users/{id?}
-  const patternParts = normalizedPattern.split("/");
-  const actualParts = normalizedActual.split("/");
-
-  // Handle optional trailing segments: /users/{id?}
-  if (patternParts.length > actualParts.length) {
-    // Check if remaining pattern parts are all optional
-    const extraParts = patternParts.slice(actualParts.length);
-    const allOptional = extraParts.every(
-      (p) => p.startsWith("{") && p.endsWith("?}")
-    );
-    if (!allOptional) return false;
-    // Truncate pattern to match actual length
-    patternParts.length = actualParts.length;
-  }
-
-  if (patternParts.length !== actualParts.length) return false;
-
-  return patternParts.every((part, i) => {
-    if (part.startsWith("{") && part.endsWith("}")) return true;
-    if (part.startsWith("{") && part.endsWith("?}")) return true;
-    if (part.startsWith(":")) return true;
-    return part === actualParts[i];
-  });
-}

@@ -95,21 +95,29 @@ export const projectRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const deletedProject = await deleteProjectByIdForUser(
+      const result = await deleteProjectByIdForUser(
         input.id,
         ctx.session.user.id
       );
 
-      if (!deletedProject) {
+      if (result.outcome === "not-found") {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Project not found",
         });
       }
 
+      if (result.outcome === "has-history") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "This project contains an API with payment history and cannot be deleted — its revenue audit trail must be preserved.",
+        });
+      }
+
       return {
         success: true,
-        project: deletedProject,
+        project: result.project,
       };
     }),
 });

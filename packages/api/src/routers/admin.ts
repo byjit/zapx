@@ -2,22 +2,92 @@ import { TRPCError } from "@trpc/server";
 import { auth } from "@turborepo-boilerplate/auth";
 import { db } from "@turborepo-boilerplate/db";
 import { ledgerEntry } from "@turborepo-boilerplate/db/schema/ledger-entry";
+import { paymentReceipt } from "@turborepo-boilerplate/db/schema/payment-receipt";
 import { userBalance } from "@turborepo-boilerplate/db/schema/user-balance";
 import { withdrawalRequest } from "@turborepo-boilerplate/db/schema/withdrawal";
 import { fromNodeHeaders } from "better-auth/node";
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { protectedProcedure, router } from "../index";
+import { adminProcedure, protectedProcedure, router } from "../index";
+
+type LockedWithdrawal = {
+  id: string;
+  user_id: string;
+  amount: string;
+  status: string;
+};
+
+type WithdrawalTransaction = Parameters<
+  Parameters<typeof db.transaction>[0]
+>[0];
 
 /**
- * Admin procedures for user management
- * Requires admin authentication
+ * Locks a withdrawal row and asserts it is in one of the statuses the caller may
+ * legally transition from. Shared by every admin transition so the lock and the
+ * guard can never drift apart (no double approval, rejection or payout).
+ */
+async function lockWithdrawal(
+  tx: WithdrawalTransaction,
+  id: string,
+  allowedStatuses: readonly string[]
+): Promise<LockedWithdrawal> {
+  const result = await tx.execute(sql`
+    SELECT id, user_id, amount, status
+    FROM withdrawal_request
+    WHERE id = ${id}
+    FOR UPDATE
+  `);
+  const withdrawal = result.rows[0] as LockedWithdrawal | undefined;
+
+  if (!withdrawal) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Withdrawal not found",
+    });
+  }
+
+  if (!allowedStatuses.includes(withdrawal.status)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Cannot perform this action on a withdrawal with status: ${withdrawal.status}`,
+    });
+  }
+
+  return withdrawal;
+}
+
+/**
+ * Applies a balance change, failing loudly if no balance row was touched — a
+ * silent no-op here would leave custodied money unaccounted for.
+ */
+async function updateBalanceOrThrow(
+  tx: WithdrawalTransaction,
+  userId: string,
+  set: Parameters<ReturnType<WithdrawalTransaction["update"]>["set"]>[0]
+) {
+  const updated = await tx
+    .update(userBalance)
+    .set(set)
+    .where(eq(userBalance.userId, userId))
+    .returning({ userId: userBalance.userId });
+
+  if (updated.length === 0) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "No balance record found for this provider",
+    });
+  }
+}
+
+/**
+ * Admin procedures for user management and the manual payout queue.
+ * Every procedure is gated by `adminProcedure`.
  */
 export const adminRouter = router({
   /**
    * List all users with pagination, search, filter, and sort
    */
-  listUsers: protectedProcedure
+  listUsers: adminProcedure
     .input(
       z.object({
         searchValue: z.string().optional(),
@@ -68,7 +138,7 @@ export const adminRouter = router({
   /**
    * Impersonate a user (create session as that user)
    */
-  impersonateUser: protectedProcedure
+  impersonateUser: adminProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -94,7 +164,12 @@ export const adminRouter = router({
     }),
 
   /**
-   * Stop impersonating and return to admin session
+   * Stop impersonating and return to the admin session.
+   *
+   * Deliberately not `adminProcedure`: during impersonation the session user *is*
+   * the impersonated user, so an admin gate here would reject the one caller who
+   * needs it. Better Auth authorizes this itself by requiring the session to
+   * carry `impersonatedBy`.
    */
   stopImpersonating: protectedProcedure.mutation(async ({ ctx }) => {
     try {
@@ -113,15 +188,43 @@ export const adminRouter = router({
   }),
 
   /**
-   * Remove a user from the database
+   * Remove a user from the database.
+   *
+   * Refused once the user has ledger history: deleting them would take the money
+   * trail with them, and the platform may still custody funds on their behalf.
+   * Ban instead — `banUser` already blocks their gateway traffic.
    */
-  removeUser: protectedProcedure
+  removeUser: adminProcedure
     .input(
       z.object({
         userId: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Both tables reference `user` with `ON DELETE RESTRICT`, so either one is
+      // enough to make the delete fail — check both to explain why instead of
+      // surfacing a raw foreign-key error.
+      const [[existingEntry], [existingReceipt]] = await Promise.all([
+        db
+          .select({ id: ledgerEntry.id })
+          .from(ledgerEntry)
+          .where(eq(ledgerEntry.userId, input.userId))
+          .limit(1),
+        db
+          .select({ id: paymentReceipt.id })
+          .from(paymentReceipt)
+          .where(eq(paymentReceipt.userId, input.userId))
+          .limit(1),
+      ]);
+
+      if (existingEntry ?? existingReceipt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "This user has financial history and cannot be deleted. Ban the user instead to preserve the audit trail.",
+        });
+      }
+
       try {
         const result = await auth.api.removeUser({
           body: {
@@ -143,7 +246,7 @@ export const adminRouter = router({
   /**
    * Ban a user
    */
-  banUser: protectedProcedure
+  banUser: adminProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -175,7 +278,7 @@ export const adminRouter = router({
   /**
    * Unban a user
    */
-  unbanUser: protectedProcedure
+  unbanUser: adminProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -203,7 +306,7 @@ export const adminRouter = router({
   /**
    * List all withdrawal requests (admin)
    */
-  listWithdrawals: protectedProcedure
+  listWithdrawals: adminProcedure
     .input(
       z.object({
         status: z
@@ -213,170 +316,103 @@ export const adminRouter = router({
         offset: z.number().min(0).default(0),
       })
     )
-    .query(async ({ ctx, input }) => {
-      try {
-        // Verify admin access
-        await auth.api.listUsers({
-          query: { limit: "1", offset: "0" },
-          headers: fromNodeHeaders(ctx.headers),
-        });
-      } catch {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Admin access required",
-        });
-      }
-
-      const conditions = input.status
-        ? [eq(withdrawalRequest.status, input.status)]
-        : [];
-
+    .query(async ({ input }) => {
       return db
         .select()
         .from(withdrawalRequest)
-        .where(conditions.length > 0 ? conditions[0] : undefined)
+        .where(
+          input.status ? eq(withdrawalRequest.status, input.status) : undefined
+        )
         .orderBy(desc(withdrawalRequest.createdAt))
         .limit(input.limit)
         .offset(input.offset);
     }),
 
   /**
-   * Approve a withdrawal request (admin)
-   * Uses SELECT ... FOR UPDATE to prevent double-approval race (#16)
+   * Approve a withdrawal request (admin).
+   *
+   * Approval only clears the request for payout. The funds stay in
+   * `pending_balance` until `completeWithdrawal` records the transfer that
+   * actually happened (spec §6.6: payout executed → ledger updated).
    */
-  approveWithdrawal: protectedProcedure
+  approveWithdrawal: adminProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      try {
-        await auth.api.listUsers({
-          query: { limit: "1", offset: "0" },
-          headers: fromNodeHeaders(ctx.headers),
-        });
-      } catch {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Admin access required",
-        });
-      }
-
+    .mutation(async ({ input }) => {
       return db.transaction(async (tx) => {
-        // Lock the withdrawal row to prevent concurrent approval
-        const approveResult = await tx.execute(sql`
-          SELECT id, user_id, amount, status
-          FROM withdrawal_request
-          WHERE id = ${input.id}
-          FOR UPDATE
-        `);
-        const withdrawal = approveResult.rows[0] as
-          | {
-              id: string;
-              user_id: string;
-              amount: string;
-              status: string;
-            }
-          | undefined;
+        await lockWithdrawal(tx, input.id, ["pending"]);
 
-        if (!withdrawal) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Withdrawal not found",
-          });
-        }
-
-        if (withdrawal.status !== "pending") {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `Cannot approve withdrawal with status: ${withdrawal.status}`,
-          });
-        }
-
-        // Update withdrawal status
         await tx
           .update(withdrawalRequest)
           .set({ status: "approved", processedAt: new Date() })
           .where(eq(withdrawalRequest.id, input.id));
-
-        // Move from pending to withdrawn — arithmetic in SQL
-        await tx
-          .update(userBalance)
-          .set({
-            pendingBalance: sql`${userBalance.pendingBalance}::numeric - ${withdrawal.amount}::numeric`,
-            totalWithdrawn: sql`${userBalance.totalWithdrawn}::numeric + ${withdrawal.amount}::numeric`,
-            updatedAt: new Date(),
-          })
-          .where(eq(userBalance.userId, withdrawal.user_id));
 
         return { success: true };
       });
     }),
 
   /**
-   * Reject a withdrawal request (admin)
-   * Uses SELECT ... FOR UPDATE to prevent double-rejection race (#16)
+   * Mark an approved withdrawal as paid out (admin).
+   *
+   * Called once the operator has actually sent the USDC, so `total_withdrawn`
+   * can never record money that was never sent.
    */
-  rejectWithdrawal: protectedProcedure
-    .input(z.object({ id: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      try {
-        await auth.api.listUsers({
-          query: { limit: "1", offset: "0" },
-          headers: fromNodeHeaders(ctx.headers),
-        });
-      } catch {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Admin access required",
-        });
-      }
-
+  completeWithdrawal: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        payoutTxHash: z.string().max(120).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
       return db.transaction(async (tx) => {
-        // Lock the withdrawal row to prevent concurrent rejection
-        const rejectResult = await tx.execute(sql`
-          SELECT id, user_id, amount, status
-          FROM withdrawal_request
-          WHERE id = ${input.id}
-          FOR UPDATE
-        `);
-        const withdrawal = rejectResult.rows[0] as
-          | {
-              id: string;
-              user_id: string;
-              amount: string;
-              status: string;
-            }
-          | undefined;
+        const withdrawal = await lockWithdrawal(tx, input.id, ["approved"]);
 
-        if (!withdrawal) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Withdrawal not found",
-          });
-        }
+        await tx
+          .update(withdrawalRequest)
+          .set({
+            status: "completed",
+            payoutTxHash: input.payoutTxHash?.trim() || null,
+            completedAt: new Date(),
+          })
+          .where(eq(withdrawalRequest.id, input.id));
 
-        if (withdrawal.status !== "pending") {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `Cannot reject withdrawal with status: ${withdrawal.status}`,
-          });
-        }
+        await updateBalanceOrThrow(tx, withdrawal.user_id, {
+          pendingBalance: sql`${userBalance.pendingBalance}::numeric - ${withdrawal.amount}::numeric`,
+          totalWithdrawn: sql`${userBalance.totalWithdrawn}::numeric + ${withdrawal.amount}::numeric`,
+          updatedAt: new Date(),
+        });
 
-        // Update withdrawal status
+        return { success: true };
+      });
+    }),
+
+  /**
+   * Reject a withdrawal request (admin).
+   *
+   * Allowed while nothing has been sent yet — `pending` or `approved` — and
+   * refunds the held amount back to the provider's available balance.
+   */
+  rejectWithdrawal: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input }) => {
+      return db.transaction(async (tx) => {
+        const withdrawal = await lockWithdrawal(tx, input.id, [
+          "pending",
+          "approved",
+        ]);
+
         await tx
           .update(withdrawalRequest)
           .set({ status: "rejected", processedAt: new Date() })
           .where(eq(withdrawalRequest.id, input.id));
 
-        // Refund: move from pending back to available
-        await tx
-          .update(userBalance)
-          .set({
-            pendingBalance: sql`${userBalance.pendingBalance}::numeric - ${withdrawal.amount}::numeric`,
-            availableBalance: sql`${userBalance.availableBalance}::numeric + ${withdrawal.amount}::numeric`,
-            updatedAt: new Date(),
-          })
-          .where(eq(userBalance.userId, withdrawal.user_id));
+        await updateBalanceOrThrow(tx, withdrawal.user_id, {
+          pendingBalance: sql`${userBalance.pendingBalance}::numeric - ${withdrawal.amount}::numeric`,
+          availableBalance: sql`${userBalance.availableBalance}::numeric + ${withdrawal.amount}::numeric`,
+          updatedAt: new Date(),
+        });
 
-        // Append refund ledger entry
+        // Offsets the `withdrawal` entry written when the request was created.
         await tx.insert(ledgerEntry).values({
           userId: withdrawal.user_id,
           type: "refund",

@@ -1,11 +1,15 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
+  Banknote,
   ChevronsUpDown,
   CreditCard,
   FolderClosed,
   LayoutDashboard,
   LogOut,
+  type LucideIcon,
+  Receipt,
   Settings,
+  ShieldCheck,
   User,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -31,9 +35,16 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { authClient } from "@/lib/auth-client";
 
-const mainItems = [
+type NavItem = {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+};
+
+const mainItems: NavItem[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -44,9 +55,19 @@ const mainItems = [
     url: "/projects",
     icon: FolderClosed,
   },
+  {
+    title: "Transactions",
+    url: "/transactions",
+    icon: Receipt,
+  },
+  {
+    title: "Withdrawals",
+    url: "/withdrawals",
+    icon: Banknote,
+  },
 ];
 
-const settingsItems = [
+const settingsItems: NavItem[] = [
   {
     title: "Billing",
     url: "/billing",
@@ -59,8 +80,52 @@ const settingsItems = [
   },
 ];
 
+const adminItems: NavItem[] = [
+  {
+    title: "Admin",
+    url: "/admin",
+    icon: ShieldCheck,
+  },
+];
+
+/** One labelled group of sidebar links, highlighting the active route. */
+function NavGroup({
+  label,
+  items,
+  activePathname,
+}: {
+  label: string;
+  items: NavItem[];
+  activePathname: string;
+}) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton
+                asChild
+                isActive={activePathname.startsWith(item.url)}
+                tooltip={item.title}
+              >
+                <Link to={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
 export function AppSidebar() {
   const { data: session } = authClient.useSession();
+  const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const router = useRouterState();
 
@@ -91,49 +156,24 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={router.location.pathname.startsWith(item.url)}
-                    tooltip={item.title}
-                  >
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavGroup
+          activePathname={router.location.pathname}
+          items={mainItems}
+          label="Platform"
+        />
       </SidebarContent>
-      <SidebarGroup>
-        <SidebarGroupLabel>Account</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {settingsItems.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={router.location.pathname.startsWith(item.url)}
-                  tooltip={item.title}
-                >
-                  <Link to={item.url}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <NavGroup
+        activePathname={router.location.pathname}
+        items={settingsItems}
+        label="Account"
+      />
+      {isAdmin && (
+        <NavGroup
+          activePathname={router.location.pathname}
+          items={adminItems}
+          label="Administration"
+        />
+      )}
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>

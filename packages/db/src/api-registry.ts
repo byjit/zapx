@@ -1,5 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "./index";
+import { ledgerEntry } from "./schema/ledger-entry";
+import { paymentReceipt } from "./schema/payment-receipt";
 import { project } from "./schema/project";
 import { providerApi } from "./schema/provider-api";
 import { providerEndpoint } from "./schema/provider-endpoint";
@@ -26,6 +28,15 @@ type UpdateEndpointPricingInput = {
   endpointId: string;
   priceUsdc: string;
 };
+
+type UpdateBaseUrlInput = {
+  userId: string;
+  apiId: string;
+  baseUrl: string;
+};
+
+/** Outcome of an owner-scoped delete, so callers can report the real reason. */
+export type DeleteProviderApiResult = "deleted" | "not-found" | "has-history";
 
 export const createProviderApiWithEndpoints = async (
   input: CreateProviderApiInput
@@ -165,4 +176,83 @@ export const updateEndpointPricingForUser = async (
 
     return updatedEndpoint;
   });
+};
+
+export const updateProviderApiBaseUrlForUser = async (
+  input: UpdateBaseUrlInput
+) => {
+  const [updatedApi] = await db
+    .update(providerApi)
+    .set({ baseUrl: input.baseUrl, updatedAt: new Date() })
+    .where(
+      and(eq(providerApi.id, input.apiId), eq(providerApi.userId, input.userId))
+    )
+    .returning();
+
+  return updatedApi ?? null;
+};
+
+/**
+ * Whether any of these APIs has money attached to it.
+ *
+ * Both tables reference `provider_api` with `ON DELETE RESTRICT`, so this decides
+ * whether a delete can succeed at all — checking first lets callers explain why
+ * instead of surfacing a raw foreign-key error. Shared by API deletion and
+ * project deletion, which cascades into APIs and hits the same constraint.
+ */
+export const anyProviderApiHasFinancialHistory = async (apiIds: string[]) => {
+  if (apiIds.length === 0) {
+    return false;
+  }
+
+  const [[entry], [receipt]] = await Promise.all([
+    db
+      .select({ id: ledgerEntry.id })
+      .from(ledgerEntry)
+      .where(inArray(ledgerEntry.apiId, apiIds))
+      .limit(1),
+    db
+      .select({ id: paymentReceipt.id })
+      .from(paymentReceipt)
+      .where(inArray(paymentReceipt.apiId, apiIds))
+      .limit(1),
+  ]);
+
+  return Boolean(entry ?? receipt);
+};
+
+/**
+ * Deletes an API the caller owns, along with its endpoints (FK cascade).
+ * Refused once the API has earned anything: revenue history is append-only.
+ */
+export const deleteProviderApiForUser = async (input: {
+  apiId: string;
+  userId: string;
+}): Promise<DeleteProviderApiResult> => {
+  const [existing] = await db
+    .select({ id: providerApi.id, projectId: providerApi.projectId })
+    .from(providerApi)
+    .where(
+      and(eq(providerApi.id, input.apiId), eq(providerApi.userId, input.userId))
+    )
+    .limit(1);
+
+  if (!existing) {
+    return "not-found";
+  }
+
+  if (await anyProviderApiHasFinancialHistory([input.apiId])) {
+    return "has-history";
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(providerApi).where(eq(providerApi.id, existing.id));
+
+    await tx
+      .update(project)
+      .set({ updatedAt: new Date() })
+      .where(eq(project.id, existing.projectId));
+  });
+
+  return "deleted";
 };

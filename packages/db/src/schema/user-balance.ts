@@ -1,5 +1,13 @@
 import { createId } from "@paralleldrive/cuid2";
-import { index, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  check,
+  index,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import {
   createInsertSchema,
   createSelectSchema,
@@ -33,7 +41,23 @@ export const userBalance = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [index("user_balance_user_id_idx").on(table.userId)]
+  (table) => [
+    index("user_balance_user_id_idx").on(table.userId),
+    // Custodied money can never go negative — enforced at the database level so
+    // no code path (or manual query) can overdraw a provider.
+    check(
+      "user_balance_available_non_negative",
+      sql`${table.availableBalance} >= 0`
+    ),
+    check(
+      "user_balance_pending_non_negative",
+      sql`${table.pendingBalance} >= 0`
+    ),
+    check(
+      "user_balance_withdrawn_non_negative",
+      sql`${table.totalWithdrawn} >= 0`
+    ),
+  ]
 );
 
 export const UserBalanceSelectSchema = createSelectSchema(userBalance);

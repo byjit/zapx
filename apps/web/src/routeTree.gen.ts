@@ -21,6 +21,8 @@ import { Route as AuthAiRouteImport } from './routes/_auth/ai'
 import { Route as AuthBillingRouteImport } from './routes/_auth/billing'
 import { Route as AuthDashboardRouteImport } from './routes/_auth/dashboard'
 import { Route as AuthSettingsRouteImport } from './routes/_auth/settings'
+import { Route as AuthTransactionsRouteImport } from './routes/_auth/transactions'
+import { Route as AuthWithdrawalsRouteImport } from './routes/_auth/withdrawals'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation.$invitationId'
 import { Route as publicBlogIndexRouteImport } from './routes/(public)/blog/index'
 import { Route as publicBlogSlugRouteImport } from './routes/(public)/blog/$slug'
@@ -86,6 +88,16 @@ const AuthSettingsRoute = AuthSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthTransactionsRoute = AuthTransactionsRouteImport.update({
+  id: '/transactions',
+  path: '/transactions',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthWithdrawalsRoute = AuthWithdrawalsRouteImport.update({
+  id: '/withdrawals',
+  path: '/withdrawals',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AcceptInvitationInvitationIdRoute =
   AcceptInvitationInvitationIdRouteImport.update({
     id: '/accept-invitation/$invitationId',
@@ -125,6 +137,8 @@ export interface FileRoutesByFullPath {
   '/billing': typeof AuthBillingRoute
   '/dashboard': typeof AuthDashboardRoute
   '/settings': typeof AuthSettingsRoute
+  '/transactions': typeof AuthTransactionsRoute
+  '/withdrawals': typeof AuthWithdrawalsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/blog/$slug': typeof publicBlogSlugRoute
   '/projects/$projectId': typeof AuthProjectsProjectIdRoute
@@ -143,6 +157,8 @@ export interface FileRoutesByTo {
   '/billing': typeof AuthBillingRoute
   '/dashboard': typeof AuthDashboardRoute
   '/settings': typeof AuthSettingsRoute
+  '/transactions': typeof AuthTransactionsRoute
+  '/withdrawals': typeof AuthWithdrawalsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/blog/$slug': typeof publicBlogSlugRoute
   '/projects/$projectId': typeof AuthProjectsProjectIdRoute
@@ -162,6 +178,8 @@ export interface FileRoutesById {
   '/_auth/billing': typeof AuthBillingRoute
   '/_auth/dashboard': typeof AuthDashboardRoute
   '/_auth/settings': typeof AuthSettingsRoute
+  '/_auth/transactions': typeof AuthTransactionsRoute
+  '/_auth/withdrawals': typeof AuthWithdrawalsRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/(public)/': typeof publicIndexRoute
   '/(public)/blog/$slug': typeof publicBlogSlugRoute
@@ -183,6 +201,8 @@ export interface FileRouteTypes {
     | '/billing'
     | '/dashboard'
     | '/settings'
+    | '/transactions'
+    | '/withdrawals'
     | '/accept-invitation/$invitationId'
     | '/blog/$slug'
     | '/projects/$projectId'
@@ -201,6 +221,8 @@ export interface FileRouteTypes {
     | '/billing'
     | '/dashboard'
     | '/settings'
+    | '/transactions'
+    | '/withdrawals'
     | '/accept-invitation/$invitationId'
     | '/blog/$slug'
     | '/projects/$projectId'
@@ -219,6 +241,8 @@ export interface FileRouteTypes {
     | '/_auth/billing'
     | '/_auth/dashboard'
     | '/_auth/settings'
+    | '/_auth/transactions'
+    | '/_auth/withdrawals'
     | '/accept-invitation/$invitationId'
     | '/(public)/'
     | '/(public)/blog/$slug'
@@ -326,6 +350,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSettingsRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/transactions': {
+      id: '/_auth/transactions'
+      path: '/transactions'
+      fullPath: '/transactions'
+      preLoaderRoute: typeof AuthTransactionsRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/withdrawals': {
+      id: '/_auth/withdrawals'
+      path: '/withdrawals'
+      fullPath: '/withdrawals'
+      preLoaderRoute: typeof AuthWithdrawalsRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/accept-invitation/$invitationId': {
       id: '/accept-invitation/$invitationId'
       path: '/accept-invitation/$invitationId'
@@ -370,6 +408,8 @@ interface AuthRouteChildren {
   AuthBillingRoute: typeof AuthBillingRoute
   AuthDashboardRoute: typeof AuthDashboardRoute
   AuthSettingsRoute: typeof AuthSettingsRoute
+  AuthTransactionsRoute: typeof AuthTransactionsRoute
+  AuthWithdrawalsRoute: typeof AuthWithdrawalsRoute
   AuthProjectsProjectIdRoute: typeof AuthProjectsProjectIdRoute
   AuthProjectsIndexRoute: typeof AuthProjectsIndexRoute
 }
@@ -380,6 +420,8 @@ const AuthRouteChildren: AuthRouteChildren = {
   AuthBillingRoute: AuthBillingRoute,
   AuthDashboardRoute: AuthDashboardRoute,
   AuthSettingsRoute: AuthSettingsRoute,
+  AuthTransactionsRoute: AuthTransactionsRoute,
+  AuthWithdrawalsRoute: AuthWithdrawalsRoute,
   AuthProjectsProjectIdRoute: AuthProjectsProjectIdRoute,
   AuthProjectsIndexRoute: AuthProjectsIndexRoute,
 }

@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { WithdrawalQueue } from "@/components/admin/withdrawal-queue";
 import { UserTable } from "@/components/admin-user-table";
 import Loader from "@/components/loader";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -13,7 +15,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { authClient } from "@/lib/auth-client";
 import { buildSeoHead } from "@/lib/seo";
 import { trpc } from "@/utils/trpc";
@@ -22,8 +33,8 @@ export const Route = createFileRoute("/_auth/admin")({
   component: RouteComponent,
   head: () =>
     buildSeoHead({
-      title: "Admin Panel | Turborepo Boilerplate",
-      description: "Manage users and system settings",
+      title: "Admin Panel | Zapx",
+      description: "Manage users, withdrawals and system settings",
       path: "/admin",
       noIndex: true,
     }),
@@ -35,19 +46,25 @@ function RouteComponent() {
   const [searchValue, setSearchValue] = useState("");
   const [searchInput, setSearchInput] = useState("");
 
+  // Presentation-only gate; every admin procedure re-checks on the server.
+  const { isAdmin, isLoading: isSessionLoading } = useIsAdmin();
+
   const {
     data: usersData,
     isLoading,
     refetch,
-  } = trpc.admin.listUsers.useQuery({
-    limit,
-    offset,
-    searchValue: searchValue || undefined,
-    searchField: "name",
-    searchOperator: "contains",
-    sortBy: "createdAt",
-    sortDirection: "desc",
-  });
+  } = trpc.admin.listUsers.useQuery(
+    {
+      limit,
+      offset,
+      searchValue: searchValue || undefined,
+      searchField: "name",
+      searchOperator: "contains",
+      sortBy: "createdAt",
+      sortDirection: "desc",
+    },
+    { enabled: isAdmin }
+  );
 
   const { data: session } = authClient.useSession();
 
@@ -91,8 +108,30 @@ function RouteComponent() {
     }
   };
 
-  if (!session) {
+  if (!session || isSessionLoading) {
     return <Loader />;
+  }
+
+  if (!isAdmin) {
+    return (
+      <Empty className="min-h-[400px] border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ShieldAlert />
+          </EmptyMedia>
+          <EmptyTitle>Not authorized</EmptyTitle>
+          <EmptyDescription>
+            The admin panel is restricted to platform administrators. If you
+            believe you should have access, contact the platform owner.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Link to="/dashboard">
+            <Button variant="outline">Back to dashboard</Button>
+          </Link>
+        </EmptyContent>
+      </Empty>
+    );
   }
 
   return (
@@ -101,7 +140,7 @@ function RouteComponent() {
         <div>
           <h1 className="font-bold text-3xl">Admin Panel</h1>
           <p className="text-muted-foreground">
-            Manage users and system settings
+            Manage users, withdrawals and system settings
           </p>
         </div>
         {isImpersonating && (
@@ -208,6 +247,8 @@ function RouteComponent() {
           )}
         </CardContent>
       </Card>
+
+      <WithdrawalQueue />
     </div>
   );
 }
